@@ -11,11 +11,11 @@ if __name__ == "__main__":
 
     setup(
         name="apkutils",
-        version="0.0.5",
+        version="0.0.6",
         description=("apkutils"),
         install_requires=[
             "pyelftools",
-            "mini-magic",
+            "cigam",
             "xmltodict",
         ],
         packages=[

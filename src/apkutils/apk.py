@@ -3,8 +3,9 @@ import xml
 import zipfile
 import traceback
 import binascii
-from magic import Magic
+
 import xmltodict
+from cigam import Magic
 
 from .axml.axmlparser import AXML
 from .dex.dexparser import DexFile
