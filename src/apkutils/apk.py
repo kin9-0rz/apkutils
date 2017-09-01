@@ -35,7 +35,7 @@ class APK:
                     if name.startswith('classes') and name.endswith('.dex'):
                         dex_file = DexFile(data)
                         self.dex_files.append(dex_file)
-        except:
+        except Exception:
             traceback.print_exc()
 
     def get_strings(self):
@@ -80,7 +80,7 @@ class APK:
                     item["crc"] = crc
                     # item["sha1"] = ""
                     self.children.append(item)
-        except:
+        except Exception:
             traceback.print_exc()
 
     def get_manifest(self):
@@ -98,9 +98,10 @@ class APK:
                         axml = AXML(data)
                         if axml.is_valid:
                             try:
-                                return xmltodict.parse(axml.get_xml())['manifest']
+                                self.manifest = xmltodict.parse(
+                                    axml.get_xml())['manifest']
                             except xml.parsers.expat.ExpatError:
-                                print('AndroidManifest Exception', end = ' ')
+                                print('AndroidManifest Exception', end=' ')
                     except:
                         traceback.print_exc()
         except:
@@ -186,7 +187,7 @@ def get_manifest(apk_path):
                             try:
                                 return xmltodict.parse(axml.get_xml())['manifest']
                             except xml.parsers.expat.ExpatError:
-                                print('AndroidManifest Exception', end = ' ')
+                                print('AndroidManifest Exception', end=' ')
                     except:
                         traceback.print_exc()
         except:

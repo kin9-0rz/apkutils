@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
     setup(
         name="apkutils",
-        version="0.0.6",
+        version="0.0.7",
         description=("apkutils"),
         install_requires=[
             "pyelftools",
