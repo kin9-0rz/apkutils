@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
     setup(
         name="apkutils",
-        version="0.0.7",
+        version="0.0.8",
         description=("apkutils"),
         install_requires=[
             "pyelftools",
@@ -31,7 +31,7 @@ if __name__ == "__main__":
         license="Apache",
         classifiers=[
             "Development Status :: 4 - Beta",
-            "License :: OSI Approved :: Apache Software License",
+            "License :: OSI Approved :: MIT License",
             "Programming Language :: Python :: 3 :: Only",
             "Topic :: Utilities",
         ],

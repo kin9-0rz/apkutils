@@ -66,7 +66,7 @@ class AXMLParser(object):
             self.visited_ns = []
         else:
             self.valid_axml = False
-            print("Not a valid xml file")
+            raise Exception("It's a invalid xml file.")
 
     def is_valid(self):
         return self.valid_axml
@@ -168,7 +168,8 @@ class AXMLParser(object):
                 self.m_classAttribute = (self.m_classAttribute & 0xFFFF) - 1
 
                 for i in range(0, attributeCount * ATTRIBUTE_LENGHT):
-                    self.m_attributes.append(unpack('<L', self.buff.read(4))[0])
+                    self.m_attributes.append(
+                        unpack('<L', self.buff.read(4))[0])
 
                 for i in range(ATTRIBUTE_IX_VALUE_TYPE, len(self.m_attributes),
                                ATTRIBUTE_LENGHT):
@@ -356,7 +357,8 @@ class AXML:
             if _type == START_DOCUMENT:
                 self.buff += '''<?xml version="1.0" encoding="utf-8"?>\n'''
             elif _type == START_TAG:
-                prefix = self.get_prefix(self.parser.get_prefix()) + self.parser.get_name()
+                prefix = self.get_prefix(
+                    self.parser.get_prefix()) + self.parser.get_name()
 
                 if len(prefix) == 0:
                     tag = "notag"

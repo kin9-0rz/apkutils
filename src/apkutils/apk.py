@@ -1,7 +1,5 @@
-import json
 import xml
 import zipfile
-import traceback
 import binascii
 
 import xmltodict
@@ -35,8 +33,8 @@ class APK:
                     if name.startswith('classes') and name.endswith('.dex'):
                         dex_file = DexFile(data)
                         self.dex_files.append(dex_file)
-        except Exception:
-            traceback.print_exc()
+        except Exception as ex:
+            raise ex
 
     def get_strings(self):
         if not self.strings:
@@ -68,8 +66,8 @@ class APK:
                         data = zf.read(name)
                         mine = Magic(data).get_type()
                         info = zf.getinfo(name)
-                    except:
-                        traceback.print_exc()
+                    except Exception as ex:
+                        print(ex)
                         continue
                     item = {}
                     item["name"] = name
@@ -80,8 +78,8 @@ class APK:
                     item["crc"] = crc
                     # item["sha1"] = ""
                     self.children.append(item)
-        except Exception:
-            traceback.print_exc()
+        except Exception as e:
+            raise e
 
     def get_manifest(self):
         if not self.manifest:
@@ -100,12 +98,12 @@ class APK:
                             try:
                                 self.manifest = xmltodict.parse(
                                     axml.get_xml())['manifest']
-                            except xml.parsers.expat.ExpatError:
-                                print('AndroidManifest Exception', end=' ')
-                    except:
-                        traceback.print_exc()
-        except:
-            traceback.print_exc()
+                            except xml.parsers.expat.ExpatError as e:
+                                raise e
+                    except Exception as e:
+                        raise e
+        except Exception as e:
+            raise e
 
     def get_opcodes(self):
         if not self.dex_files:
@@ -157,8 +155,8 @@ def get_files(apk_path):
                         data = zf.read(name)
                         mine = Magic(data).get_mime()
                         info = zf.getinfo(name)
-                    except:
-                        traceback.print_exc()
+                    except Exception as ex:
+                        print(ex)
                         continue
                     item = {}
                     item["name"] = name
@@ -168,8 +166,8 @@ def get_files(apk_path):
                     item["sha1"] = ""
                     files.append(item)
 
-        except:
-            traceback.print_exc()
+        except Exception as ex:
+            raise ex
 
     return files
 
@@ -186,12 +184,12 @@ def get_manifest(apk_path):
                         if axml.is_valid:
                             try:
                                 return xmltodict.parse(axml.get_xml())['manifest']
-                            except xml.parsers.expat.ExpatError:
-                                print('AndroidManifest Exception', end=' ')
-                    except:
-                        traceback.print_exc()
-        except:
-            traceback.print_exc()
+                            except xml.parsers.expat.ExpatError as ex:
+                                raise ex
+                    except Exception as ex:
+                        raise ex
+        except Exception as ex:
+            raise ex
 
     return {}
 
@@ -206,8 +204,8 @@ def get_dex_files(apk_path):
                     if name.startswith('classes') and name.endswith('.dex'):
                         dex_file = DexFile(data)
                         dex_files.append(dex_file)
-        except:
-            traceback.print_exc()
+        except Exception as ex:
+            raise ex
 
     return dex_files
 
@@ -325,16 +323,16 @@ def get_resource_infos(apk_path):
     if zipfile.is_zipfile(apk_path):
         try:
             with zipfile.ZipFile(apk_path, mode="r") as zf:
-                if "resources.arsc" in zf.namelist():
-                    data = zf.read("resources.arsc")
+                if RESOURCES_ARSC in zf.namelist():
+                    data = zf.read(RESOURCES_ARSC)
                     try:
                         arscobj = ARSCParser(data)
                         package = arscobj.get_packages_names()[0]
                         return arscobj.get_string_resources(package)
-                    except:
-                        traceback.print_exc()
-        except:
-            traceback.print_exc()
+                    except Exception as ex:
+                        print(ex)
+        except Exception as ex:
+            print(ex)
 
 
 def get_infos(apk_path):

@@ -34,13 +34,13 @@ class StringBlock(object):
         self.m_charbuff = ""
         self.m_styles = []
 
-        for i in range(0, self.stringCount):
+        for _ in range(0, self.stringCount):
             tmp = buff.read(4)
             if len(tmp) < 4:
                 break
             self.m_stringOffsets.append(unpack('<i', tmp)[0])
 
-        for i in range(0, self.styleOffsetCount):
+        for _ in range(0, self.styleOffsetCount):
             tmp = buff.read(4)
             if len(tmp) < 4:
                 break
@@ -67,7 +67,7 @@ class StringBlock(object):
             # if (size % 4) != 0:
             #     size = size & ~3
 
-            for i in range(0, int(size / 4) - 1):
+            for _ in range(0, int(size / 4) - 1):
                 tmp = buff.read(4)
                 if len(tmp) < 4:
                     break
@@ -136,7 +136,7 @@ class StringBlock(object):
     def decode_bytes(self, data, encoding, str_len):
         string = data.decode(encoding, 'replace')
         if len(string) != str_len:
-            print("invalid decoded string length")
+            raise Exception("invalid decoded string length")
         return string
 
     def decodeLength(self, offset, sizeof_char):
@@ -153,8 +153,7 @@ class StringBlock(object):
 
         if (length & highbit) != 0:
             return ((length1 & ~highbit) << (8 * sizeof_char)) | length2, sizeof_2chars
-        else:
-            return length1, sizeof_char
+        return length1, sizeof_char
 
     def show(self):
         print(("StringBlock(%x, %x, %x, %x, %x, %x" % (
