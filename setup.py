@@ -6,9 +6,6 @@ if __name__ == "__main__":
     with open('README.rst', 'r') as f:
         long_description = f.read()
 
-    # def read(fname):
-    #     return open(os.path.join(os.path.dirname(__file__), fname)).read()
-
     setup(
         name="apkutils",
         version="0.0.8",
@@ -25,7 +22,6 @@ if __name__ == "__main__":
             "apkutils.elf",
             "apkutils.test",
         ],
-        package_dir={"": "src"},
 
         keywords="",
         license="Apache",
