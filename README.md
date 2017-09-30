@@ -6,15 +6,31 @@ This module help me to get infos from APK.
 - apkutils\dex from [google/enjarify](https://github.com/google/enjarify)
 
 
-### Install
+### Install and Test
 
 ```
-pip install apkutils
+$ pip install apkutils
 ```
-
 
 ### Usage
 
+#### Command Line:
+```
+$ python -m apkutils.apk -h
+usage: adog [-h] [-m] [-s] [-f] p
+
+positional arguments:
+  p           path
+
+optional arguments:
+  -h, --help  show this help message and exit
+  -m          Show manifest
+  -s          Show strings
+  -f          Show files
+
+```
+
+#### Code
 ```python
 from apkutils.apk import APK
 
