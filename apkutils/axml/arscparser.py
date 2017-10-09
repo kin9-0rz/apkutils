@@ -126,7 +126,8 @@ class ARSCParser(object):
         self.packages = {}
         self.values = {}
         self.resource_values = collections.defaultdict(collections.defaultdict)
-        self.resource_configs = collections.defaultdict(lambda: collections.defaultdict(set))
+        self.resource_configs = collections.defaultdict(
+            lambda: collections.defaultdict(set))
         self.resource_keys = collections.defaultdict(
             lambda: collections.defaultdict(collections.defaultdict))
 
@@ -162,8 +163,8 @@ class ARSCParser(object):
                         a_res_type.config)
 
                     entries = []
-                    for i in range(0, a_res_type.entryCount):
-                        current_package.mResId = current_package.mResId & 0xffff0000 | i
+                    for j in range(0, a_res_type.entryCount):
+                        current_package.mResId = current_package.mResId & 0xffff0000 | j
                         entries.append((unpack('<i', self.buff.read(4))[0],
                                         current_package.mResId))
 
@@ -218,9 +219,11 @@ class ARSCParser(object):
                         nb_i = 0
                         for entry, res_id in entries:
                             if entry != -1:
-                                ate = self.packages[package_name][nb + 3 + nb_i]
+                                ate = self.packages[
+                                    package_name][nb + 3 + nb_i]
 
-                                self.resource_values[ate.mResId][a_res_type.config] = ate
+                                self.resource_values[ate.mResId][
+                                    a_res_type.config] = ate
                                 self.resource_keys[package_name][
                                     a_res_type.get_type()][ate.get_value()] = ate.mResId
 
@@ -354,7 +357,8 @@ class ARSCParser(object):
             import binascii
             for i in self.values[package_name][locale]["string"]:
                 item = {}
-                item['name'], item['value'] = i[0], binascii.hexlify(i[1].encode('utf-8')).decode()
+                item['name'], item['value'] = i[0], binascii.hexlify(
+                    i[1].encode('utf-8')).decode()
                 res.append(item)
         except KeyError:
             pass
@@ -376,7 +380,8 @@ class ARSCParser(object):
                 buff += '<resources>\n'
                 try:
                     for i in self.values[package_name][locale]["string"]:
-                        buff += '<string name="%s">%s</string>\n' % (i[0], i[1])
+                        buff += '<string name="%s">%s</string>\n' % (i[0], i[
+                                                                     1])
                 except KeyError:
                     pass
 
@@ -505,7 +510,8 @@ class ARSCParser(object):
                 complex_array = []
                 result.append(config, complex_array)
                 for _, item in ate.item.items:
-                    self.put_item_value(complex_array, item, config, complex_=True)
+                    self.put_item_value(complex_array, item,
+                                        config, complex_=True)
             else:
                 self.put_item_value(result, ate.key, config, complex_=False)
 
