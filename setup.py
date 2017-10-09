@@ -10,7 +10,7 @@ with open('README.rst', 'r') as f:
 setup(
     name="apkutils",
 
-    version="0.0.8",
+    version="0.0.9",
 
     description=("Utils for parsing apk."),
     long_description=long_description,
