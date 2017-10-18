@@ -1,3 +1,5 @@
+.vscode/
+
 *.py[cod]
 
 # C extensions
