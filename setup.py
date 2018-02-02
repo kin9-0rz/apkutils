@@ -1,6 +1,6 @@
 ﻿from os import path
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 here = path.abspath(path.dirname(__file__))
 
@@ -10,7 +10,7 @@ with open('README.rst', 'r') as f:
 setup(
     name="apkutils",
 
-    version="0.1.2",
+    version="0.1.3",
 
     description=("Utils for parsing apk."),
     long_description=long_description,
