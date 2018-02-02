@@ -1,4 +1,3 @@
-========
 apkutils
 ========
 
@@ -7,23 +6,18 @@ This module help me to get infos from APK.
 - apkutils\axml from `mikusjelly/axmlparser(No maintenance) <https://github.com/mikusjelly/axmlparser>`_
 - apkutils\dex from `google/enjarify <https://github.com/google/enjarify>`_
 
-------
+
 Install
-------
+---
 
-::
-
+.. code-block:: python
   $ pip install apkutils
 
 
-------
 Usage
-------
+---
 
-- Command Line:
-
-::
-
+.. code-block:: python
   $ python -m apkutils.apk -h
   usage: adog [-h] [-m] [-s] [-f] p
 
@@ -37,9 +31,7 @@ Usage
     -f          Show files
 
 
-- Code
-::
-
+.. code-block:: python
   from apkutils.apk import APK
 
   apk = APK('test.apk')
@@ -47,9 +39,3 @@ Usage
   apk_obj.get_strings()
   apk.get_files()
   apk_obj.get_dex_files()
-
-  # elf
-  from apkutils.apk import get_elf_infos
-  get_elf_infos("test.apk")
-
-

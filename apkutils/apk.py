@@ -1,5 +1,4 @@
 import binascii
-import xml
 import zipfile
 
 import xmltodict
@@ -16,6 +15,7 @@ class APK:
         self.dex_files = None
         self.children = None
         self.manifest = None
+        self.org_manifest = None
         self.strings = None
         self.opcodes = None
 
@@ -90,6 +90,11 @@ class APK:
             self._init_manifest()
         return self.manifest
 
+    def get_org_manifest(self):
+        if not self.org_manifest:
+            self._init_manifest()
+        return self.org_manifest
+
     def _init_manifest(self):
         ANDROID_MANIFEST = "AndroidManifest.xml"
         try:
@@ -101,11 +106,9 @@ class APK:
                     try:
                         axml = AXML(data)
                         if axml.is_valid:
-                            try:
-                                self.manifest = xmltodict.parse(
-                                    axml.get_xml())['manifest']
-                            except xml.parsers.expat.ExpatError as e:
-                                raise e
+                            self.org_manifest = axml.get_xml()
+                            self.manifest = xmltodict.parse(
+                                self.org_manifest)['manifest']
                     except Exception as e:
                         raise e
         except Exception as e:
