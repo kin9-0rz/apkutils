@@ -8,16 +8,18 @@ This module help me to get infos from APK.
 
 
 Install
----
+-------
 
-.. code-block:: python
+.. code-block::
+
   $ pip install apkutils
 
 
 Usage
----
+-----
 
-.. code-block:: python
+.. code-block::
+
   $ python -m apkutils.apk -h
   usage: adog [-h] [-m] [-s] [-f] p
 

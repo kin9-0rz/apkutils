@@ -4,13 +4,13 @@ from setuptools import find_packages, setup
 
 here = path.abspath(path.dirname(__file__))
 
-# with open('README.rst', 'r') as f:
-#     long_description = f.read()
+with open('README.rst', 'r') as f:
+    long_description = f.read()
 
 setup(
     name="apkutils",
 
-    version="0.1.3",
+    version="0.1.4",
 
     description=("Utils for parsing apk."),
     long_description=long_description,

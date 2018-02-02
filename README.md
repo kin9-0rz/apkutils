@@ -40,8 +40,4 @@ apk_obj.get_strings()
 apk.get_files()
 apk_obj.get_dex_files()
 
-# elf
-from apkutils.apk import get_elf_infos
-get_elf_infos("test.apk")
 ```
-

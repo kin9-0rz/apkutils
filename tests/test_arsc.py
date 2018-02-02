@@ -1,12 +1,9 @@
 import os
 import unittest
 import zipfile
-from xml.dom import minidom
-import xmltodict
 from collections import OrderedDict
 
-
-from apkutils import apk
+import xmltodict
 from apkutils.axml.arscparser import ARSCParser
 
 
