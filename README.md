@@ -1,6 +1,6 @@
 # apkutils
 
-This module help me to get infos from APK.
+A library that gets infos from APK.
 
 - apkutils\axml from [mikusjelly/axmlparser](https://github.com/mikusjelly/axmlparser)(No maintenance)
 - apkutils\dex from [google/enjarify](https://github.com/google/enjarify)
@@ -14,7 +14,6 @@ $ pip install apkutils
 
 ### Usage
 
-#### Command Line:
 ```
 $ python -m apkutils.apk -h
 usage: adog [-h] [-m] [-s] [-f] p
@@ -27,17 +26,5 @@ optional arguments:
   -m          Show manifest
   -s          Show strings
   -f          Show files
-
-```
-
-#### Code
-```python
-from apkutils.apk import APK
-
-apk = APK('test.apk')
-apk.get_manifest()
-apk_obj.get_strings()
-apk.get_files()
-apk_obj.get_dex_files()
 
 ```

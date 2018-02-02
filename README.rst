@@ -1,10 +1,10 @@
 apkutils
 ========
 
-This module help me to get infos from APK.
+A library that gets infos from APK.
 
-- apkutils\axml from `mikusjelly/axmlparser(No maintenance) <https://github.com/mikusjelly/axmlparser>`_
-- apkutils\dex from `google/enjarify <https://github.com/google/enjarify>`_
+- apkutils\\axml from `mikusjelly/axmlparser(No maintenance) <https://github.com/mikusjelly/axmlparser>`_
+- apkutils\\dex from `google/enjarify <https://github.com/google/enjarify>`_
 
 
 Install
@@ -31,13 +31,3 @@ Usage
     -m          Show manifest
     -s          Show strings
     -f          Show files
-
-
-.. code-block:: python
-  from apkutils.apk import APK
-
-  apk = APK('test.apk')
-  apk.get_manifest()
-  apk_obj.get_strings()
-  apk.get_files()
-  apk_obj.get_dex_files()

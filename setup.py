@@ -1,19 +1,18 @@
-﻿from os import path
+import os.path
 
 from setuptools import find_packages, setup
 
-here = path.abspath(path.dirname(__file__))
 
-with open('README.rst', 'r') as f:
-    long_description = f.read()
+def read(fname):
+    return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(
     name="apkutils",
 
-    version="0.1.4",
+    version="0.1.7",
 
     description=("Utils for parsing apk."),
-    long_description=long_description,
+    long_description=read('README.rst'),
 
     url="https://github.com/mikusjelly/apkutils",
 
