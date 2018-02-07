@@ -1,20 +1,15 @@
 from struct import pack, unpack
-from xml.sax.saxutils import escape
-import traceback
-
 from xml.dom import minidom
+from xml.sax.saxutils import escape
 
-from .chunk import BuffHandle, StringBlock
 from . import public
-
+from .chunk import BuffHandle, StringChunk
 
 # AXML FORMAT #
 # Translated from
 # http://code.google.com/p/android4me/source/browse/src/android/content/res/AXmlResourceParser.java
 
 UTF8_FLAG = 0x00000100
-
-DEBUG = False
 
 CHUNK_STRINGPOOL_TYPE = 0x001C0001
 CHUNK_NULL_TYPE = 0x00000000
@@ -26,7 +21,10 @@ ATTRIBUTE_IX_VALUE_TYPE = 3
 ATTRIBUTE_IX_VALUE_DATA = 4
 ATTRIBUTE_LENGHT = 5
 
-CHUNK_AXML_FILE = 0x00080003
+CHUNK_AXML_FILE = {0x00080003, 0x00080009}
+MAGIC_NUMBER = 0x00080003
+MAGIC_NUMBER_MIN = 0x00080000
+MAGIC_NUMBER_MAX = 0x00080009
 CHUNK_RESOURCEIDS = 0x00080180
 CHUNK_XML_FIRST = 0x00100100
 CHUNK_XML_START_NAMESPACE = 0x00100100
@@ -47,16 +45,26 @@ class AXMLParser(object):
 
     def __init__(self, raw_buff):
         self.reset()
+        self.file_size = 0
 
         self.valid_axml = True
         self.buff = BuffHandle(raw_buff)
 
-        axml_file = unpack('<L', self.buff.read(4))[0]
+        magic_number = unpack('<L', self.buff.read(4))[0]
 
-        if axml_file == CHUNK_AXML_FILE:
-            self.buff.read(4)
+        if magic_number == MAGIC_NUMBER:
+            self.file_size = unpack('<L', self.buff.read(4))[0]
+            self.sb = StringChunk(self.buff)
 
-            self.sb = StringBlock(self.buff)
+            self.m_resourceIDs = []
+            self.m_prefixuri = {}
+            self.m_uriprefix = {}
+            self.m_prefixuriL = []
+
+            self.visited_ns = []
+        elif magic_number >= MAGIC_NUMBER_MIN and magic_number <= MAGIC_NUMBER_MAX:
+            self.file_size = unpack('<L', self.buff.read(4))[0]
+            self.sb = StringChunk(self.buff)
 
             self.m_resourceIDs = []
             self.m_prefixuri = {}
@@ -106,7 +114,13 @@ class AXMLParser(object):
                 if self.buff.end():
                     self.m_event = END_DOCUMENT
                     break
-                chunkType = unpack('<L', self.buff.read(4))[0]
+                # --- FIXME 这里不一定是4个
+                # 这里出里问题，导致死循环
+                data4 = self.buff.read(4)
+                if data4:
+                    chunkType = unpack('<L', data4)[0]
+                else:
+                    pass
 
             if chunkType == CHUNK_RESOURCEIDS:
                 chunkSize = unpack('<L', self.buff.read(4))[0]

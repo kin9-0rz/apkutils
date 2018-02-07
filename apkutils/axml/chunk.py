@@ -1,6 +1,5 @@
 from struct import pack, unpack
 
-DEBUG = False
 # NS_ANDROID_URI = 'http://schemas.android.com/apk/res/android'
 
 # AXML FORMAT ########################################
@@ -12,7 +11,10 @@ CHUNK_STRINGPOOL_TYPE = 0x001C0001
 CHUNK_NULL_TYPE = 0x00000000
 
 
-class StringBlock(object):
+class StringChunk(object):
+    '''
+    解析String Chunk
+    '''
 
     def __init__(self, buff):
         self.start = buff.get_idx()
@@ -21,13 +23,19 @@ class StringBlock(object):
 
         self.chunkSize = unpack('<i', buff.read(4))[0]
         self.stringCount = unpack('<i', buff.read(4))[0]
-        self.styleOffsetCount = unpack('<i', buff.read(4))[0]
-
+        self.styleCount = unpack('<i', buff.read(4))[0]
         self.flags = unpack('<i', buff.read(4))[0]
-        self.m_isUTF8 = ((self.flags & UTF8_FLAG) != 0)
-
+        # 字符串池的偏移值
         self.stringsOffset = unpack('<i', buff.read(4))[0]
+        # 注意：
+        # 1. 如果解析的是清单，那么这个值肯定是为空的。
+        # 2. 该值不可能大于小于文件的大小（开发者通常用来对抗解析工具）
         self.stylesOffset = unpack('<i', buff.read(4))[0]
+        if self.stylesOffset > buff.size():
+            self.stylesOffset = 0
+
+        # 判断是否为UTF8
+        self.m_isUTF8 = ((self.flags & UTF8_FLAG) != 0)
 
         self.m_stringOffsets = []
         self.m_styleOffsets = []
@@ -40,17 +48,12 @@ class StringBlock(object):
                 break
             self.m_stringOffsets.append(unpack('<i', tmp)[0])
 
-        for _ in range(0, self.styleOffsetCount):
+        for _ in range(0, self.styleCount):
             tmp = buff.read(4)
             if len(tmp) < 4:
                 break
             self.m_styleOffsets.append(unpack('<i', tmp)[0])
 
-        if DEBUG:
-            print('chunkSize:', self.chunkSize)
-            print('chunkSize:', self.chunkSize)
-            print('stringsOffset:', self.stringsOffset)
-            print('stylesOffset:', self.stylesOffset)
         size = self.chunkSize - self.stringsOffset
         if self.stylesOffset != 0:
             size = self.stylesOffset - self.stringsOffset
@@ -74,17 +77,17 @@ class StringBlock(object):
                 self.m_styles.append(unpack('<i', tmp)[0])
 
     def skipNullPadding(self, buff):
-
+        '''
+        不断地寻找 CHUNK_STRINGPOOL_TYPE，目前暂时没有遇到这种样本。
+        '''
         def readNext(buff, first_run=True):
             header = unpack('<i', buff.read(4))[0]
 
             if header == CHUNK_NULL_TYPE and first_run:
-                if DEBUG:
-                    print("Skipping null padding in StringBlock header")
+                print("Skipping null padding in StringChunk header")
                 header = readNext(buff, first_run=False)
             elif header != CHUNK_STRINGPOOL_TYPE:
-                if DEBUG:
-                    print("Invalid StringBlock header")
+                print("Invalid StringChunk header")
 
             return header
 
@@ -109,7 +112,7 @@ class StringBlock(object):
         return self._cache[idx]
 
     def getStyle(self, idx):
-        # FIXME
+        # TODO
         return self.m_styles[idx]
 
     def decode8(self, offset):
@@ -155,16 +158,24 @@ class StringBlock(object):
             return ((length1 & ~highbit) << (8 * sizeof_char)) | length2, sizeof_2chars
         return length1, sizeof_char
 
-    def show(self):
-        print(("StringBlock(%x, %x, %x, %x, %x, %x" % (
+    def show(self, flag=False):
+        print(("StringChunk(%d, %d, %d, %d, %d, %d)" % (
             self.start,
-            self.header,
-            self.header_size,
             self.chunkSize,
+            self.stringCount,
+            self.styleCount,
             self.stringsOffset,
             self.flags)))
+        if not flag:
+            return
         for i in range(0, len(self.m_stringOffsets)):
             print((i, repr(self.getString(i))))
+
+CHUNK_RESOURCEIDS_TYPE = 0x00080180
+
+
+class ResourceIDChunk(object):
+    pass
 
 
 class SV(object):
@@ -238,7 +249,6 @@ class BuffHandle(object):
 # ATTRIBUTE_LENGHT = 5
 #
 # CHUNK_AXML_FILE = 0x00080003
-# CHUNK_RESOURCEIDS = 0x00080180
 # CHUNK_XML_FIRST = 0x00100100
 # CHUNK_XML_START_NAMESPACE = 0x00100100
 # CHUNK_XML_END_NAMESPACE = 0x00100101
