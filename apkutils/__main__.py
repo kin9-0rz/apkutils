@@ -8,7 +8,10 @@ def main(args):
 
     if args.m:
         import json
-        print(json.dumps(apk.get_manifest(), indent=1))
+        if apk.get_manifest():
+            print(json.dumps(apk.get_manifest(), indent=1))
+        elif apk.get_org_manifest():
+            print(apk.get_org_manifest())
 
     elif args.s:
         for item in apk.get_strings():

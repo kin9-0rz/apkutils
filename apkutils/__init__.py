@@ -1,4 +1,5 @@
 import binascii
+import xml
 
 import xmltodict
 from cigam import Magic
@@ -101,10 +102,17 @@ class APK:
                         axml = AXML(data)
                         if axml.is_valid:
                             self.org_manifest = axml.get_xml()
-                            self.manifest = xmltodict.parse(
-                                self.org_manifest)['manifest']
                     except Exception as e:
                         raise e
+
+                    if self.org_manifest:
+                        try:
+                            self.manifest = xmltodict.parse(
+                                self.org_manifest, False)['manifest']
+                        except xml.parsers.expat.ExpatError as e:
+                            print(self.apk_path, e)
+                        except Exception as e:
+                            raise e
         except Exception as e:
             raise e
 
