@@ -11,9 +11,9 @@ CHUNK_STRINGPOOL_TYPE = 0x001C0001
 CHUNK_NULL_TYPE = 0x00000000
 
 
-class StringChunk(object):
+class StringPoolChunk(object):
     '''
-    解析String Chunk
+    解析String Pool Chunk
     '''
 
     def __init__(self, buff):
@@ -26,49 +26,46 @@ class StringChunk(object):
         self.styleCount = unpack('<i', buff.read(4))[0]
         self.flags = unpack('<i', buff.read(4))[0]
         # 字符串池的偏移值
-        self.stringsOffset = unpack('<i', buff.read(4))[0]
+        self.stringsStart = unpack('<i', buff.read(4))[0]
         # 注意：
         # 1. 如果解析的是清单，那么这个值肯定是为空的。
         # 2. 该值不可能大于小于文件的大小（开发者通常用来对抗解析工具）
-        self.stylesOffset = unpack('<i', buff.read(4))[0]
-        if self.stylesOffset > buff.size():
-            self.stylesOffset = 0
+        self.stylesStart = unpack('<i', buff.read(4))[0]
+        if self.stylesStart > buff.size():
+            self.stylesStart = 0
 
-        # 判断是否为UTF8
+        # 字符串的格式有两种，一种是16bit，另外一种是UTF8
         self.m_isUTF8 = ((self.flags & UTF8_FLAG) != 0)
 
-        self.m_stringOffsets = []
-        self.m_styleOffsets = []
+        self.m_stringIndices = []
+        self.m_styleIndices = []
+        # 字符串池
         self.m_charbuff = ""
+        # style pan 池
         self.m_styles = []
 
         for _ in range(0, self.stringCount):
             tmp = buff.read(4)
             if len(tmp) < 4:
                 break
-            self.m_stringOffsets.append(unpack('<i', tmp)[0])
+            self.m_stringIndices.append(unpack('<i', tmp)[0])
 
         for _ in range(0, self.styleCount):
             tmp = buff.read(4)
             if len(tmp) < 4:
                 break
-            self.m_styleOffsets.append(unpack('<i', tmp)[0])
+            self.m_styleIndices.append(unpack('<i', tmp)[0])
 
-        size = self.chunkSize - self.stringsOffset
-        if self.stylesOffset != 0:
-            size = self.stylesOffset - self.stringsOffset
+        # 4字节对齐
+        size = self.chunkSize - self.stringsStart
+        if self.stylesStart != 0:
+            size = self.stylesStart - self.stringsStart
 
-        # if (size % 4) != 0:
-        #     size = size & ~3
-        #     print("ooo")
-
+        # 字符串池
         self.m_charbuff = buff.read(size)
 
-        if self.stylesOffset != 0:
-            size = self.chunkSize - self.stylesOffset
-
-            # if (size % 4) != 0:
-            #     size = size & ~3
+        if self.stylesStart != 0:
+            size = self.chunkSize - self.stylesStart
 
             for _ in range(0, int(size / 4) - 1):
                 tmp = buff.read(4)
@@ -84,10 +81,10 @@ class StringChunk(object):
             header = unpack('<i', buff.read(4))[0]
 
             if header == CHUNK_NULL_TYPE and first_run:
-                print("Skipping null padding in StringChunk header")
+                print("Skipping null padding in StringPoolChunk header")
                 header = readNext(buff, first_run=False)
             elif header != CHUNK_STRINGPOOL_TYPE:
-                print("Invalid StringChunk header")
+                print("Invalid StringPoolChunk header")
 
             return header
 
@@ -98,11 +95,11 @@ class StringChunk(object):
         if idx in self._cache:
             return self._cache[idx]
 
-        if idx < 0 or not self.m_stringOffsets or idx >= len(
-                self.m_stringOffsets):
+        if idx < 0 or not self.m_stringIndices or idx >= len(
+                self.m_stringIndices):
             return ""
 
-        offset = self.m_stringOffsets[idx]
+        offset = self.m_stringIndices[idx]
 
         if self.m_isUTF8:
             self._cache[idx] = self.decode8(offset)
@@ -112,7 +109,6 @@ class StringChunk(object):
         return self._cache[idx]
 
     def getStyle(self, idx):
-        # TODO
         return self.m_styles[idx]
 
     def decode8(self, offset):
@@ -159,16 +155,16 @@ class StringChunk(object):
         return length1, sizeof_char
 
     def show(self, flag=False):
-        print(("StringChunk(%d, %d, %d, %d, %d, %d)" % (
+        print(("StringPoolChunk(%d, %d, %d, %d, %d, %d)" % (
             self.start,
             self.chunkSize,
             self.stringCount,
             self.styleCount,
-            self.stringsOffset,
+            self.stringsStart,
             self.flags)))
         if not flag:
             return
-        for i in range(0, len(self.m_stringOffsets)):
+        for i in range(0, len(self.m_stringIndices)):
             print((i, repr(self.getString(i))))
 
 CHUNK_RESOURCEIDS_TYPE = 0x00080180

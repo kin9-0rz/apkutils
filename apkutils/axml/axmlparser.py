@@ -3,7 +3,7 @@ from xml.dom import minidom
 from xml.sax.saxutils import escape
 
 from . import public
-from .chunk import BuffHandle, StringChunk
+from .chunk import BuffHandle, StringPoolChunk
 
 # AXML FORMAT #
 # Translated from
@@ -54,7 +54,7 @@ class AXMLParser(object):
 
         if magic_number == MAGIC_NUMBER:
             self.file_size = unpack('<L', self.buff.read(4))[0]
-            self.sb = StringChunk(self.buff)
+            self.sb = StringPoolChunk(self.buff)
 
             self.m_resourceIDs = []
             self.m_prefixuri = {}
@@ -64,7 +64,7 @@ class AXMLParser(object):
             self.visited_ns = []
         elif magic_number >= MAGIC_NUMBER_MIN and magic_number <= MAGIC_NUMBER_MAX:
             self.file_size = unpack('<L', self.buff.read(4))[0]
-            self.sb = StringChunk(self.buff)
+            self.sb = StringPoolChunk(self.buff)
 
             self.m_resourceIDs = []
             self.m_prefixuri = {}
@@ -352,6 +352,7 @@ class AXML:
     def __init__(self, raw_buff):
         self.parser = AXMLParser(raw_buff)
         self.xmlns = False
+        # 存放解析后的XML
         self.buff = ''
 
         self.is_valid = True

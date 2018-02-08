@@ -9,7 +9,7 @@ def read(fname):
 setup(
     name="apkutils",
 
-    version="0.1.9",
+    version="0.2.0",
 
     description=("Utils for parsing apk."),
     long_description=read('README.rst'),
