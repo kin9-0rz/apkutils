@@ -23,7 +23,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    __VERSION__ = '0.2.0'
+    __VERSION__ = '0.2.1'
 
     import argparse
     _parser = argparse.ArgumentParser(prog='adog', description=None)

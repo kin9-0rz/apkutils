@@ -25,14 +25,14 @@ class APK:
         return self.dex_files
 
     def _init_dex_files(self):
+        print("sadasd")
         self.dex_files = []
         try:
             with zipfile.ZipFile(self.apk_path, 'r') as z:
                 for name in z.namelist():
-                    # zipinfo = z.getinfo(name)
-                    # zipinfo.flag_bits = 0
                     data = z.read(name)
-                    if name.startswith('classes') and name.endswith('.dex'):
+                    if name.startswith('classes') and name.endswith('.dex') \
+                            and Magic(data).get_type() == 'dex':
                         dex_file = DexFile(data)
                         self.dex_files.append(dex_file)
         except Exception as ex:

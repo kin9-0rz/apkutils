@@ -31,7 +31,8 @@ class APK:
             with apkfile.ZipFile(self.apk_path, 'r') as z:
                 for name in z.namelist():
                     data = z.read(name)
-                    if name.startswith('classes') and name.endswith('.dex'):
+                    if name.startswith('classes') and name.endswith('.dex') \
+                            and Magic(data).get_type() == 'dex':
                         dex_file = DexFile(data)
                         self.dex_files.append(dex_file)
         except Exception as ex:
