@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import util
+from apkutils.dex import util
 
 # Code for parsing the various Dalvik opcode formats
 INSTRUCTION_FORMAT = util.keysToRanges({

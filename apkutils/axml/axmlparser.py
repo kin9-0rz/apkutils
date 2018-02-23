@@ -2,8 +2,8 @@ from struct import pack, unpack
 from xml.dom import minidom
 from xml.sax.saxutils import escape
 
-from . import public
-from .chunk import BuffHandle, StringPoolChunk
+from apkutils.axml import public
+from apkutils.axml.chunk import BuffHandle, StringPoolChunk
 
 # AXML FORMAT #
 # Translated from

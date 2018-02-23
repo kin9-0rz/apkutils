@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import dalvikformats
-from . import util
+from apkutils.dex import dalvikformats
+from apkutils.dex import util
 
 class DalvikInstruction:
     def __init__(self, type_, pos, newpos, opcode, args):

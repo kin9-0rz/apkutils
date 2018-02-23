@@ -3,9 +3,9 @@ import binascii
 import xmltodict
 from cigam import Magic
 
-from . import mzipfile as zipfile
-from .axml.axmlparser import AXML
-from .dex.dexparser import DexFile
+import zipfile
+from apkutils.axml.axmlparser import AXML
+from apkutils.dex.dexparser import DexFile
 
 
 class APK:
@@ -25,7 +25,6 @@ class APK:
         return self.dex_files
 
     def _init_dex_files(self):
-        print("sadasd")
         self.dex_files = []
         try:
             with zipfile.ZipFile(self.apk_path, 'r') as z:
