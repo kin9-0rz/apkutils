@@ -14,7 +14,7 @@
 
 import struct
 
-from .util import signExtend
+from apkutils.dex.util import signExtend
 
 
 class Reader:

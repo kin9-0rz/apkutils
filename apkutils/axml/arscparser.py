@@ -1,7 +1,7 @@
 from struct import pack, unpack
 import collections
 
-from .chunk import BuffHandle, StringBlock, DEBUG
+from apkutils.axml.chunk import BuffHandle, StringPoolChunk
 
 # RES_NULL_TYPE = 0x0000
 # RES_STRING_POOL_TYPE = 0x0001
@@ -63,6 +63,12 @@ TYPE_TABLE = {
 }
 
 
+def getPackage(i):
+    if i >> 24 == 1:
+        return "android:"
+    return ""
+
+
 def format_value(_type, _data, lookup_string=lambda ix: "<string>"):
     if _type == TYPE_STRING:
         return lookup_string(_data)
@@ -120,7 +126,7 @@ class ARSCParser(object):
         self.header = ARSCHeader(self.buff)
         self.packageCount = unpack('<i', self.buff.read(4))[0]
 
-        self.stringpool_main = StringBlock(self.buff)
+        self.stringpool_main = StringPoolChunk(self.buff)
 
         self.next_header = ARSCHeader(self.buff)
         self.packages = {}
@@ -137,8 +143,8 @@ class ARSCParser(object):
 
             self.packages[package_name] = []
 
-            mTableStrings = StringBlock(self.buff)
-            mKeyStrings = StringBlock(self.buff)
+            mTableStrings = StringPoolChunk(self.buff)
+            mKeyStrings = StringPoolChunk(self.buff)
 
             self.packages[package_name].append(current_package)
             self.packages[package_name].append(mTableStrings)
@@ -306,10 +312,6 @@ class ARSCParser(object):
                     DIMENSION_UNITS[ate.key.get_data() & COMPLEX_UNIT_MASK])
             ]
         except IndexError:
-            if DEBUG:
-                print("Out of range dimension unit index for %s: %s" % (
-                    complexToFloat(ate.key.get_data()),
-                    ate.key.get_data() & COMPLEX_UNIT_MASK))
             return [ate.get_value(), ate.key.get_data()]
 
     # FIXME
@@ -745,8 +747,6 @@ class ARSCResTableConfig(object):
 
             self.exceedingSize = self.size - 36
             if self.exceedingSize > 0:
-                if DEBUG:
-                    print("Skipping padding bytes!")
                 self.padding = buff.read(self.exceedingSize)
         else:
             self.start = 0
