@@ -35,15 +35,27 @@ class Reader:
         return fmt.unpack_from(self.read(fmt.size))[0]
 
     def u8(self):
+        '''
+        1bytes, FF
+        '''
         return self.read(1)[0]
 
     def u16(self):
+        '''
+        2bytes FF FF
+        '''
         return self._unpack('<H')
 
     def u32(self):
+        '''
+        4bytes FF FF FF FF
+        '''
         return self._unpack('<I')
 
     def u64(self):
+        '''
+        8bytes FF FF FF FF FF FF FF FF 
+        '''
         return self._unpack('<Q')
 
     def _leb128(self, signed=False):

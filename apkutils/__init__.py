@@ -4,9 +4,9 @@ import xml
 import xmltodict
 from cigam import Magic
 
-from . import apkfile
-from .axml.axmlparser import AXML
-from .dex.dexparser import DexFile
+from apkutils import apkfile
+from apkutils.axml.axmlparser import AXML
+from apkutils.dex.dexparser import DexFile
 
 
 class APK:

@@ -269,9 +269,22 @@ class DexFile:
         stream = Reader(data)
 
         # parse header
-        stream.read(36)
+        magic = stream.read(4)  # magic
+        print(magic)
+        magic_vers = stream.read(4)  # magic_vers
+        print(magic_vers)
+        checksum = stream.u32()  # adler32 checksum
+        print(checksum)
+        import binascii
+        sha1 = binascii.b2a_hex(stream.read(20)).decode('utf-8')
+        print(sha1)
+
+        if stream.u32() != len(self.raw):
+            print('Warning, unexpected file size!')
+
         if stream.u32() != 0x70:
             print('Warning, unexpected header size!')
+
         if stream.u32() != 0x12345678:
             print('Warning, unexpected endianess tag!')
 
