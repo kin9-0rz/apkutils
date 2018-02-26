@@ -274,8 +274,8 @@ class DexFile:
         # checksum = stream.u32()  # adler32 checksum
         # import binascii
         # sha1 = binascii.b2a_hex(stream.read(20)).decode('utf-8')
-        # skip 36(magic, magic_vers, checksum, sha1)
-        stream.read(36)
+        # skip 32(magic, magic_vers, checksum, sha1)
+        stream.read(32)
 
         if stream.u32() != len(self.raw):
             print('Warning, unexpected file size!')
