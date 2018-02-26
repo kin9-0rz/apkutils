@@ -269,15 +269,13 @@ class DexFile:
         stream = Reader(data)
 
         # parse header
-        magic = stream.read(4)  # magic
-        print(magic)
-        magic_vers = stream.read(4)  # magic_vers
-        print(magic_vers)
-        checksum = stream.u32()  # adler32 checksum
-        print(checksum)
-        import binascii
-        sha1 = binascii.b2a_hex(stream.read(20)).decode('utf-8')
-        print(sha1)
+        # magic = stream.read(4)  # magic
+        # magic_vers = stream.read(4)  # magic_vers
+        # checksum = stream.u32()  # adler32 checksum
+        # import binascii
+        # sha1 = binascii.b2a_hex(stream.read(20)).decode('utf-8')
+        # skip 36(magic, magic_vers, checksum, sha1)
+        stream.read(36)
 
         if stream.u32() != len(self.raw):
             print('Warning, unexpected file size!')
