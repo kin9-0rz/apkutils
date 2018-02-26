@@ -14,9 +14,9 @@
 
 import array
 
-from .byteio import Reader
-from .dalvik import parseBytecode
-from .util import signExtend
+from apkutils.dex.byteio import Reader
+from apkutils.dex.dalvik import parseBytecode
+from apkutils.dex.util import signExtend
 
 NO_INDEX = 0xFFFFFFFF
 
