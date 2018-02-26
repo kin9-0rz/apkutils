@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from apkutils import apk
+from apkutils import APK
 
 
 class TestAPK(unittest.TestCase):
@@ -9,7 +9,7 @@ class TestAPK(unittest.TestCase):
     def setUp(self):
         file_path = os.path.abspath(os.path.join(
             os.path.dirname(__file__), "..", 'data', 'test_zip_fake_pwd'))
-        self.apk = apk.APK(file_path)
+        self.apk = APK(file_path)
 
     def test_get_manifest(self):
         self.apk.get_manifest()
