@@ -1,4 +1,4 @@
-# apkutils [![PyPI version](https://badge.fury.io/py/apkutils.svg)](https://badge.fury.io/py/apkutils) ![DUB](https://img.shields.io/dub/l/vibe-d.svg)
+# apkutils [![PyPI version](https://badge.fury.io/py/apkutils.svg)](https://badge.fury.io/py/apkutils) ![license](https://img.shields.io/github/license/mashape/apistatus.svg)
 
 A library that gets infos from APK.
 
@@ -25,6 +25,6 @@ optional arguments:
 
 ```
 
-### Ref
-- apkutils\axml from [mikusjelly/axmlparser](https://github.com/mikusjelly/axmlparser)(No maintenance)
+### Reference
+- apkutils\axml from [mikusjelly/axmlparser](https://github.com/mikusjelly/axmlparser) ![Project unmaintained](https://img.shields.io/badge/project-unmaintained-red.svg)
 - apkutils\dex from [google/enjarify](https://github.com/google/enjarify)
