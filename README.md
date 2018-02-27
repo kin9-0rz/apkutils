@@ -1,10 +1,6 @@
-# apkutils
+# apkutils [![PyPI version](https://badge.fury.io/py/apkutils.svg)](https://badge.fury.io/py/apkutils)
 
 A library that gets infos from APK.
-
-- apkutils\axml from [mikusjelly/axmlparser](https://github.com/mikusjelly/axmlparser)(No maintenance)
-- apkutils\dex from [google/enjarify](https://github.com/google/enjarify)
-
 
 ### Install and Test
 
@@ -28,3 +24,7 @@ optional arguments:
   -f          Show files
 
 ```
+
+### Ref
+- apkutils\axml from [mikusjelly/axmlparser](https://github.com/mikusjelly/axmlparser)(No maintenance)
+- apkutils\dex from [google/enjarify](https://github.com/google/enjarify)
