@@ -18,6 +18,7 @@ class APK:
         self.manifest = None
         self.org_manifest = None
         self.strings = None
+        self.org_strings = None
         self.opcodes = None
 
     def get_dex_files(self):
@@ -43,16 +44,25 @@ class APK:
             self._init_strings()
         return self.strings
 
+    def get_org_strings(self):
+        if not self.org_strings:
+            self._init_strings()
+        return self.org_strings
+
     def _init_strings(self):
         if not self.dex_files:
             self._init_dex_files()
 
         str_set = set()
+        org_str_set = set()
         for dex_file in self.dex_files:
             for i in range(dex_file.string_ids.size):
-                str_set.add(binascii.hexlify(dex_file.string(i)).decode())
+                ostr = dex_file.string(i)
+                org_str_set.add(ostr)
+                str_set.add(binascii.hexlify(ostr).decode())
 
         self.strings = list(str_set)
+        self.org_strings = list(org_str_set)
 
     def get_files(self):
         if not self.children:
