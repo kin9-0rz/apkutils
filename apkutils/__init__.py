@@ -20,6 +20,7 @@ class APK:
         self.strings = None
         self.org_strings = None
         self.opcodes = None
+        self.certs = []
 
     def get_dex_files(self):
         if not self.dex_files:
@@ -124,6 +125,25 @@ class APK:
                             print(self.apk_path, e)
                         except Exception as e:
                             raise e
+        except Exception as e:
+            raise e
+    
+    def get_certs(self):
+        if not self.certs:
+            self._init_certs()
+        return self.certs
+
+    def _init_certs(self):
+        try:
+            with apkfile.ZipFile(self.apk_path, mode="r") as zf:
+                for name in zf.namelist():
+                    if 'META-INF' in name:
+                        data = zf.read(name)
+                        mine = Magic(data).get_type()
+                        if mine != 'txt':
+                            from apkutils.cert import Certificate
+                            cert = Certificate(data)
+                            self.certs = cert.get()
         except Exception as e:
             raise e
 

@@ -21,6 +21,9 @@ def main(args):
         for item in apk.get_files():
             print(item)
 
+    elif args.c:
+        for item in apk.get_certs():
+            print(item)
 
 if __name__ == '__main__':
     __VERSION__ = '0.2.1'
@@ -34,7 +37,8 @@ if __name__ == '__main__':
                          help='Show strings', required=False)
     _parser.add_argument('-f', action='store_true',
                          help='Show files', required=False)
-
+    _parser.add_argument('-c', action='store_true',
+                         help='Show certs', required=False)
     _parser.add_argument('-V', '--version', action='version',
                          version=__VERSION__)
 
