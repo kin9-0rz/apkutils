@@ -53,6 +53,7 @@ class LargeZipFile(Exception):
     and those extensions are disabled.
     """
 
+
 error = BadZipfile = BadZipFile      # Pre-3.2 compatibility names
 
 
@@ -872,8 +873,9 @@ class ZipExtFile(io.BufferedIOBase):
             return
         self._running_crc = crc32(newdata, self._running_crc) & 0xffffffff
         # Check the CRC if we're at the end of the file
-        if self._eof and self._running_crc != self._expected_crc:
-            raise BadZipFile("Bad CRC-32 for file %r" % self.name)
+        # 因为Android并不验证CRC，所以，直接跳过，强行解析
+        # if self._eof and self._running_crc != self._expected_crc:
+        #     raise BadZipFile("Bad CRC-32 for file %r" % self.name)
 
     def read1(self, n):
         """Read up to n bytes with at most one read() system call."""
@@ -1070,7 +1072,7 @@ class ZipFile:
                     self.start_dir = self.fp.tell()
             else:
                 raise RuntimeError("Mode must be 'r', 'w', 'x', or 'a'")
-        except:
+        except Exception as ignore:
             fp = self.fp
             self.fp = None
             self._fpclose(fp)
@@ -1282,7 +1284,14 @@ class ZipFile:
             if fheader[_FH_SIGNATURE] != stringFileHeader:
                 raise BadZipFile("Bad magic number for file header")
 
-            fname = zef_file.read(fheader[_FH_FILENAME_LENGTH])
+            # 注意：头部的文件长度可能会被修改
+            len_fname = fheader[_FH_FILENAME_LENGTH]
+            if len_fname > 256:
+                # 自动修正文件名长度
+                len_fname = len(zinfo.orig_filename)
+
+            fname = zef_file.read(len_fname)
+
             if fheader[_FH_EXTRA_FIELD_LENGTH]:
                 zef_file.read(fheader[_FH_EXTRA_FIELD_LENGTH])
 
@@ -1302,6 +1311,8 @@ class ZipFile:
                 fname_str = fname.decode("cp437")
 
             if fname_str != zinfo.orig_filename:
+                print('fname_str', fname_str)
+                print('orig_filename', zinfo.orig_filename)
                 raise BadZipFile(
                     'File name in directory %r and header %r differ.'
                     % (zinfo.orig_filename, fname))
@@ -1335,7 +1346,7 @@ class ZipFile:
             #         raise RuntimeError("Bad password for file", name)
 
             return ZipExtFile(zef_file, mode, zinfo, zd, True)
-        except:
+        except Exception as ignore:
             zef_file.close()
             raise
 
@@ -1983,6 +1994,7 @@ def main(args=None):
                 if zippath in ('', os.curdir, os.pardir):
                     zippath = ''
                 addToZip(zf, path, zippath)
+
 
 if __name__ == "__main__":
     main()
