@@ -25,8 +25,9 @@ def main(args):
         for item in apk.get_certs():
             print(item)
 
+
 if __name__ == '__main__':
-    __VERSION__ = '0.2.1'
+    __VERSION__ = '0.2.8'
 
     import argparse
     _parser = argparse.ArgumentParser(prog='adog', description=None)

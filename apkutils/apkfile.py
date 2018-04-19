@@ -723,7 +723,6 @@ class ZipExtFile(io.BufferedIOBase):
     def __init__(self, fileobj, mode, zipinfo, decrypter=None,
                  close_fileobj=False):
         self._fileobj = fileobj
-        self._decrypter = decrypter
         self._close_fileobj = close_fileobj
 
         self._compress_type = zipinfo.compress_type
@@ -739,19 +738,8 @@ class ZipExtFile(io.BufferedIOBase):
         self._universal = 'U' in mode
         self.newlines = None
 
-        # Adjust read size for encrypted files since the first 12 bytes
-        # are for the encryption/password information.
-        if self._decrypter is not None:
-            self._compress_left -= 12
-
         self.mode = mode
         self.name = zipinfo.filename
-
-        if hasattr(zipinfo, 'CRC'):
-            self._expected_crc = zipinfo.CRC
-            self._running_crc = crc32(b'') & 0xffffffff
-        else:
-            self._expected_crc = None
 
     def __repr__(self):
         result = ['<%s.%s' % (self.__class__.__module__,
@@ -873,7 +861,8 @@ class ZipExtFile(io.BufferedIOBase):
             return
         self._running_crc = crc32(newdata, self._running_crc) & 0xffffffff
         # Check the CRC if we're at the end of the file
-        # 因为Android并不验证CRC，所以，直接跳过，强行解析
+        # 因为Android并不验证CRC
+        # 部分APK把CRC抹掉，解析的时候，不验证CRC
         # if self._eof and self._running_crc != self._expected_crc:
         #     raise BadZipFile("Bad CRC-32 for file %r" % self.name)
 
@@ -947,7 +936,7 @@ class ZipExtFile(io.BufferedIOBase):
         self._left -= len(data)
         if self._left <= 0:
             self._eof = True
-        self._update_crc(data)
+        # self._update_crc(data)
         return data
 
     def _read2(self, n):
@@ -962,8 +951,6 @@ class ZipExtFile(io.BufferedIOBase):
         if not data:
             raise EOFError
 
-        if self._decrypter is not None:
-            data = bytes(map(self._decrypter, data))
         return data
 
     def close(self):
@@ -1276,10 +1263,12 @@ class ZipFile:
         try:
             # Skip the file header:
             fheader = zef_file.read(sizeFileHeader)
+
             if len(fheader) != sizeFileHeader:
                 raise BadZipFile("Truncated file header")
 
             fheader = struct.unpack(structFileHeader, fheader)
+            # print(fheader)
 
             if fheader[_FH_SIGNATURE] != stringFileHeader:
                 raise BadZipFile("Bad magic number for file header")
@@ -1287,13 +1276,15 @@ class ZipFile:
             # 注意：头部的文件长度可能会被修改
             len_fname = fheader[_FH_FILENAME_LENGTH]
             if len_fname > 256:
-                # 自动修正文件名长度
+                # 自动修正文件名长度，但是，不能保证解压成功
                 len_fname = len(zinfo.orig_filename)
 
             fname = zef_file.read(len_fname)
 
             if fheader[_FH_EXTRA_FIELD_LENGTH]:
                 zef_file.read(fheader[_FH_EXTRA_FIELD_LENGTH])
+
+            # zinfo.flag_bits ^= zinfo.flag_bits % 2
 
             if zinfo.flag_bits & 0x20:
                 # Zip 2.7: compressed patched data
@@ -1311,41 +1302,11 @@ class ZipFile:
                 fname_str = fname.decode("cp437")
 
             if fname_str != zinfo.orig_filename:
-                print('fname_str', fname_str)
-                print('orig_filename', zinfo.orig_filename)
                 raise BadZipFile(
                     'File name in directory %r and header %r differ.'
                     % (zinfo.orig_filename, fname))
 
-            # ---> APK 不存在加密
-            # check for encrypted flag & handle password
-            # is_encrypted = zinfo.flag_bits & 0x1
-            zd = None
-            # if is_encrypted:
-            #     if not pwd:
-            #         pwd = self.pwd
-            #     if not pwd:
-            #         raise RuntimeError("File %s is encrypted, password "
-            #                            "required for extraction" % name)
-            #
-            #     zd = _ZipDecrypter(pwd)
-            #     # The first 12 bytes in the cypher stream is an encryption header
-            #     #  used to strengthen the algorithm. The first 11 bytes are
-            #     #  completely random, while the 12th contains the MSB of the CRC,
-            #     #  or the MSB of the file time depending on the header type
-            #     #  and is used to check the correctness of the password.
-            #     header = zef_file.read(12)
-            #     h = list(map(zd, header[0:12]))
-            #     if zinfo.flag_bits & 0x8:
-            #         # compare against the file type from extended local headers
-            #         check_byte = (zinfo._raw_time >> 8) & 0xff
-            #     else:
-            #         # compare against the CRC otherwise
-            #         check_byte = (zinfo.CRC >> 24) & 0xff
-            #     if h[11] != check_byte:
-            #         raise RuntimeError("Bad password for file", name)
-
-            return ZipExtFile(zef_file, mode, zinfo, zd, True)
+            return ZipExtFile(zef_file, mode, zinfo, None, True)
         except Exception as ignore:
             zef_file.close()
             raise

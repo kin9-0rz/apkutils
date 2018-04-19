@@ -365,6 +365,9 @@ class AXML:
         tag = "notag"
         while True:
             _type = next(self.parser)
+            # 异常类型直接退出
+            if _type == -1:
+                break
 
             if "</manifest>" in self.buff:
                 break
@@ -381,7 +384,7 @@ class AXML:
                 self.buff += '<' + prefix + '\n'
                 self.buff += self.parser.get_xmlns()
 
-                tag = prefix
+                # tag = prefix
                 for i in range(0, int(self.parser.get_attribute_count())):
 
                     self.buff += "%s%s=\"%s\"\n" % (
