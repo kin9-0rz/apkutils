@@ -94,17 +94,12 @@ class APK:
         except Exception as e:
             raise e
 
-    def get_manifest(self):
-        if not self.manifest:
-            self._init_manifest()
-        return self.manifest
-
     def get_org_manifest(self):
         if not self.org_manifest:
             self._init_manifest()
         return self.org_manifest
 
-    def _init_manifest(self):
+    def _init_org_manifest(self):
         ANDROID_MANIFEST = "AndroidManifest.xml"
         try:
             with apkfile.ZipFile(self.apk_path, mode="r") as zf:
@@ -116,18 +111,27 @@ class APK:
                             self.org_manifest = axml.get_xml()
                     except Exception as e:
                         raise e
-
-                    if self.org_manifest:
-                        try:
-                            self.manifest = xmltodict.parse(
-                                self.org_manifest, False)['manifest']
-                        except xml.parsers.expat.ExpatError as e:
-                            print(self.apk_path, e)
-                        except Exception as e:
-                            raise e
         except Exception as e:
             raise e
-    
+
+    def get_manifest(self):
+        if not self.manifest:
+            self._init_manifest()
+        return self.manifest
+
+    def _init_manifest(self):
+        if not self.org_manifest:
+            self._init_org_manifest()
+
+        if self.org_manifest:
+            try:
+                self.manifest = xmltodict.parse(
+                    self.org_manifest, False)['manifest']
+            except xml.parsers.expat.ExpatError as e:
+                pass
+            except Exception as e:
+                raise e
+
     def get_certs(self):
         if not self.certs:
             self._init_certs()
