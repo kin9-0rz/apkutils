@@ -11,18 +11,24 @@ import apkutils
 
 
 def _bind_apk_right_menu():
+    # Run ad administrator
     if not ctypes.windll.shell32.IsUserAnAdmin():
         ctypes.windll.shell32.ShellExecuteW(
             None, "runas", sys.executable, __file__ + " --bind", None, 0)
         return
 
-    with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, r"*\shell") as key:
-        print(key)
-        with winreg.CreateKeyEx(key, "APK Parser", 0, winreg.KEY_SET_VALUE) as shell_key:
-            with winreg.CreateKey(shell_key, "command") as cmd_key:
-                winreg.SetValue(
-                    cmd_key, "", 1, " ".join(
-                        [sys.executable.replace("python.exe", "pythonw.exe"), os.path.abspath(__file__), "--file",  "\"%1\""]))
+    # Mouse Right menu "Parse APK File"
+    with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, "") as root_key:
+        with winreg.CreateKeyEx(root_key, r"Apkutils.GUI\shell\Parse APK File\command", 0, winreg.KEY_WRITE) as key:
+            winreg.SetValue(key, "", 1, " ".join(
+                [sys.executable.replace("python.exe", "pythonw.exe"), os.path.abspath(__file__), "--file",  "\"%1\""]))
+
+    with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, "", 0, winreg.KEY_WRITE) as key:
+        with winreg.CreateKeyEx(key, ".apk", 0, winreg.KEY_WRITE) as key:
+            winreg.SetValueEx(key, "", 0,
+                              winreg.REG_SZ, "Apkutils.GUI")
+
+    print("Binded")
 
 
 def _unbind_reg():
@@ -30,13 +36,20 @@ def _unbind_reg():
         ctypes.windll.shell32.ShellExecuteW(
             None, "runas", sys.executable, __file__ + "  --unbind", None, 0)
         return
-    try:
-        winreg.DeleteKey(winreg.HKEY_LOCAL_MACHINE,
-                         r"SOFTWARE\Classes\*\shell\APK Parser\command")
-        winreg.DeleteKey(winreg.HKEY_LOCAL_MACHINE,
-                         r"SOFTWARE\Classes\*\shell\APK Parser")
-    except FileNotFoundError:
-        pass
+
+    with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, r".apk", 0, winreg.KEY_ALL_ACCESS) as key:
+        winreg.DeleteValue(key, "")
+        # winreg.DeleteValue(key, "Apkutils.back_up")
+
+    # Delete recursively
+    winreg.DeleteKey(winreg.HKEY_CLASSES_ROOT,
+                     r"Apkutils.GUI\\shell\\Parse APK File\\command")
+    winreg.DeleteKey(winreg.HKEY_CLASSES_ROOT,
+                     r"Apkutils.GUI\\shell\\Parse APK File")
+    winreg.DeleteKey(winreg.HKEY_CLASSES_ROOT,
+                     r"Apkutils.GUI\\shell")
+    winreg.DeleteKey(winreg.HKEY_CLASSES_ROOT,
+                     r"Apkutils.GUI")
 
 
 class TKList(object):
