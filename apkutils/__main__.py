@@ -30,7 +30,7 @@ if __name__ == '__main__':
     __VERSION__ = '0.2.8'
 
     import argparse
-    _parser = argparse.ArgumentParser(prog='adog', description=None)
+    _parser = argparse.ArgumentParser(prog='apkutils', description=None)
     _parser.add_argument('p', help='path')
     _parser.add_argument('-m', action='store_true',
                          help='Show manifest', required=False)
