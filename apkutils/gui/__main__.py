@@ -8,6 +8,7 @@ import sys
 import argparse
 import os
 import apkutils
+import pathlib
 
 
 def _bind_apk_right_menu():
@@ -19,6 +20,9 @@ def _bind_apk_right_menu():
     with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, r"*\shell") as key:
         print(key)
         with winreg.CreateKeyEx(key, "APK Parser", 0, winreg.KEY_SET_VALUE) as shell_key:
+            icon_path = str(pathlib.Path(__file__).joinpath(
+                "../../../imgs/android.ico").resolve())
+            winreg.SetValueEx(shell_key, "Icon", 0, winreg.REG_SZ, icon_path)
             with winreg.CreateKey(shell_key, "command") as cmd_key:
                 winreg.SetValue(
                     cmd_key, "", 1, " ".join(
