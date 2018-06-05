@@ -10,10 +10,10 @@ def read(fname):
 setup(
     name="apkutils",
 
-    version="0.2.8",
+    version="0.2.10",
 
     description=("Utils for parsing apk."),
-    long_description=read('README.rst'),
+    long_description=read('README.md'),
 
     url="https://github.com/mikusjelly/apkutils",
 

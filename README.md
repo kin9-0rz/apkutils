@@ -11,17 +11,19 @@ $ pip install apkutils
 ### Usage
 
 ```
-$ python -m apkutils.apk -h
-usage: adog [-h] [-m] [-s] [-f] p
+$ python3 -m apkutils -h
+usage: apkutils [-h] [-m] [-s] [-f] [-c] [-V] p
 
 positional arguments:
-  p           path
+  p              path
 
 optional arguments:
-  -h, --help  show this help message and exit
-  -m          Show manifest
-  -s          Show strings
-  -f          Show files
+  -h, --help     show this help message and exit
+  -m             Show manifest
+  -s             Show strings
+  -f             Show files
+  -c             Show certs
+  -V, --version  show program's version number and exit
 
 ```
 
