@@ -1,5 +1,7 @@
+# coding: utf-8
 import binascii
 import xml
+import zipfile
 
 import xmltodict
 from cigam import Magic
@@ -7,6 +9,8 @@ from cigam import Magic
 from apkutils import apkfile
 from apkutils.axml.axmlparser import AXML
 from apkutils.dex.dexparser import DexFile
+from apkutils.manifest import Manifest
+from apkutils.axml.arscparser import ARSCParser
 
 
 class APK:
@@ -15,12 +19,12 @@ class APK:
         self.apk_path = apk_path
         self.dex_files = None
         self.children = None
-        self.manifest = None
         self.org_manifest = None
         self.strings = None
         self.org_strings = None
         self.opcodes = None
         self.certs = []
+        self._manifest = None
 
     def get_dex_files(self):
         if not self.dex_files:
@@ -99,6 +103,12 @@ class APK:
             self._init_manifest()
         return self.org_manifest
 
+    @property
+    def resources(self):
+        with zipfile.ZipFile(self.apk_path, mode="r") as zf:
+            data = zf.read('resources.arsc')
+            return ARSCParser(data)
+
     def _init_org_manifest(self):
         ANDROID_MANIFEST = "AndroidManifest.xml"
         try:
@@ -115,9 +125,13 @@ class APK:
             raise e
 
     def get_manifest(self):
-        if not self.manifest:
+        if not self._manifest:
             self._init_manifest()
-        return self.manifest
+        return self._manifest
+
+    @property
+    def manifest(self):
+        return Manifest(self.get_org_manifest())
 
     def _init_manifest(self):
         if not self.org_manifest:
@@ -125,7 +139,7 @@ class APK:
 
         if self.org_manifest:
             try:
-                self.manifest = xmltodict.parse(
+                self._manifest = xmltodict.parse(
                     self.org_manifest, False)['manifest']
             except xml.parsers.expat.ExpatError as e:
                 pass
