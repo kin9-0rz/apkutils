@@ -7,6 +7,7 @@ from cigam import Magic
 from apkutils import apkfile
 from apkutils.axml.axmlparser import AXML
 from apkutils.dex.dexparser import DexFile
+from apkutils.axml.arscparser import ARSCParser
 
 
 class APK:
@@ -21,6 +22,7 @@ class APK:
         self.org_strings = None
         self.opcodes = None
         self.certs = []
+        self.arsc = None
 
     def get_dex_files(self):
         if not self.dex_files:
@@ -131,6 +133,22 @@ class APK:
                 pass
             except Exception as e:
                 raise e
+
+    def _init_arsc(self):
+        ARSC_NAME = 'resources.arsc'
+        try:
+            with apkfile.ZipFile(self.apk_path, mode="r") as zf:
+                if ARSC_NAME in zf.namelist():
+                    data = zf.read(ARSC_NAME)
+                    self.arsc = ARSCParser(data)
+        except Exception as e:
+            raise e
+
+    def get_arsc(self):
+        if not self.arsc:
+            self._init_arsc()
+
+        return self.arsc
 
     def get_certs(self):
         if not self.certs:
