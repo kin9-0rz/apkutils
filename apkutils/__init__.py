@@ -23,6 +23,52 @@ class APK:
         self.opcodes = None
         self.certs = []
         self.arsc = None
+        self.strings_refx = None
+    
+    def _init_strings_refx(self):
+        if not self.dex_files:
+            self._init_dex_files()
+
+        self.strings_refx = {}
+        for dex_file in self.dex_files:
+            for dexClass in dex_file.classes: 
+                try:
+                    dexClass.parseData()
+                except IndexError:
+                    continue
+
+                for method in dexClass.data.methods:
+                    if not method.code:
+                        continue 
+
+                    for bc in method.code.bytecode:
+                        # 1A const-string 
+                        # 1B const-string-jumbo
+                        if bc.opcode not in {26, 27}:
+                            continue
+
+                        clsname = method.id.cname.decode()
+                        mtdname = method.id.name.decode()
+                        dexstr = dex_file.string(bc.args[1])
+                        if clsname in self.strings_refx:
+                            if mtdname in self.strings_refx[clsname]:
+                                self.strings_refx[clsname][mtdname].add(dexstr)
+                            else:
+                                self.strings_refx[clsname][mtdname] = set(dexstr)
+                        else:
+                            self.strings_refx[clsname] = {}
+                            self.strings_refx[clsname][mtdname] = set()
+                            self.strings_refx[clsname][mtdname].add(dexstr)
+
+    def get_strings_refx(self):
+        """获取字符串索引，即字符串被那些类、方法使用了。
+        
+        :return: 字符串索引
+        :rtype: [dict]
+        """
+        if self.strings_refx is None:
+            self._init_strings_refx()
+        return self.strings_refx
 
     def get_dex_files(self):
         if not self.dex_files:
