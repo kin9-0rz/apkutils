@@ -54,7 +54,8 @@ class APK:
                             if mtdname in self.strings_refx[clsname]:
                                 self.strings_refx[clsname][mtdname].add(dexstr)
                             else:
-                                self.strings_refx[clsname][mtdname] = set(dexstr)
+                                self.strings_refx[clsname][mtdname] = set()
+                                self.strings_refx[clsname][mtdname].add(dexstr)
                         else:
                             self.strings_refx[clsname] = {}
                             self.strings_refx[clsname][mtdname] = set()
