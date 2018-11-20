@@ -35,7 +35,10 @@ class TestAPK(unittest.TestCase):
 
     def test_get_app_icon(self):
         path = self.apk.get_app_icon()
-        self.assertEqual(path, 'res/drawable-hdpi-v4/ic_launcher.png')
+        self.assertIn(path, {'res/drawable-hdpi-v4/ic_launcher.png',
+                             'res/drawable-mdpi-v4/ic_launcher.png',
+                             'res/drawable-xhdpi-v4/ic_launcher.png',
+                             'res/drawable-xxhdpi-v4/ic_launcher.png'})
 
 
 if __name__ == "__main__":

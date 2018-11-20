@@ -1,4 +1,5 @@
 import binascii
+import re
 import xml
 
 import xmltodict
@@ -23,13 +24,17 @@ class APK:
         self.certs = []
         self.arsc = None
         self.strings_refx = None
+        self.app_icon = None
 
     def get_app_icon(self):
+        if self.app_icon:
+            return self.app_icon
+        self._init_app_icon()
+        return self.app_icon
+
+    def _init_app_icon(self):
         files = self.get_files()
-        # android:icon="@7F020000"
-        import re
-        ptn = r':icon="@(.*?)"'
-        result = re.search(ptn, self.get_org_manifest())
+        result = re.search(r':icon="@(.*?)"', self.get_org_manifest())
         ids = '0x' + result.groups()[0].lower()
         try:
             with apkfile.ZipFile(self.apk_path, 'r') as z:
@@ -39,11 +44,12 @@ class APK:
                 datas = xmltodict.parse(
                     self.arscobj.get_public_resources(self.package))
                 for item in datas['resources']['public']:
-                    if "0x7f020000" == item['@id']:
-                        for f in files:
-                            name = f['name']
-                            if item['@type'] in name and item['@name'] in name:
-                                return name
+                    if ids != item['@id']:
+                        continue
+                    for f in files:
+                        name = f['name']
+                        if item['@type'] in name and item['@name'] in name:
+                            self.app_icon = name
         except Exception as ex:
             raise ex
 
