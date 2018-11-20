@@ -2,12 +2,11 @@ import binascii
 import xml
 
 import xmltodict
-from cigam import Magic
-
 from apkutils import apkfile
+from apkutils.axml.arscparser import ARSCParser
 from apkutils.axml.axmlparser import AXML
 from apkutils.dex.dexparser import DexFile
-from apkutils.axml.arscparser import ARSCParser
+from cigam import Magic
 
 
 class APK:
@@ -24,14 +23,37 @@ class APK:
         self.certs = []
         self.arsc = None
         self.strings_refx = None
-    
+
+    def get_app_icon(self):
+        files = self.get_files()
+        # android:icon="@7F020000"
+        import re
+        ptn = r':icon="@(.*?)"'
+        result = re.search(ptn, self.get_org_manifest())
+        ids = '0x' + result.groups()[0].lower()
+        try:
+            with apkfile.ZipFile(self.apk_path, 'r') as z:
+                data = z.read('resources.arsc')
+                self.arscobj = ARSCParser(data)
+                self.package = self.arscobj.get_packages_names()[0]
+                datas = xmltodict.parse(
+                    self.arscobj.get_public_resources(self.package))
+                for item in datas['resources']['public']:
+                    if "0x7f020000" == item['@id']:
+                        for f in files:
+                            name = f['name']
+                            if item['@type'] in name and item['@name'] in name:
+                                return name
+        except Exception as ex:
+            raise ex
+
     def _init_strings_refx(self):
         if not self.dex_files:
             self._init_dex_files()
 
         self.strings_refx = {}
         for dex_file in self.dex_files:
-            for dexClass in dex_file.classes: 
+            for dexClass in dex_file.classes:
                 try:
                     dexClass.parseData()
                 except IndexError:
@@ -39,10 +61,10 @@ class APK:
 
                 for method in dexClass.data.methods:
                     if not method.code:
-                        continue 
+                        continue
 
                     for bc in method.code.bytecode:
-                        # 1A const-string 
+                        # 1A const-string
                         # 1B const-string-jumbo
                         if bc.opcode not in {26, 27}:
                             continue
@@ -63,7 +85,7 @@ class APK:
 
     def get_strings_refx(self):
         """获取字符串索引，即字符串被那些类、方法使用了。
-        
+
         :return: 字符串索引
         :rtype: [dict]
         """

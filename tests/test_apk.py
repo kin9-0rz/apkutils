@@ -33,6 +33,10 @@ class TestAPK(unittest.TestCase):
                 self.assertEqual(opcodes, '6F156E0E')
                 break
 
+    def test_get_app_icon(self):
+        path = self.apk.get_app_icon()
+        self.assertEqual(path, 'res/drawable-hdpi-v4/ic_launcher.png')
+
 
 if __name__ == "__main__":
     unittest.main()

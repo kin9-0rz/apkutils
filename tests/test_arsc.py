@@ -53,6 +53,15 @@ class TestAPK(unittest.TestCase):
             [('@type', 'menu'), ('@name', 'main'), ('@id', '0x7f070000')])
         self.assertIn(main, datas['resources']['public'])
 
+    def test_others(self):
+        datas = xmltodict.parse(
+            self.arscobj.get_public_resources(self.package))
+        for item in datas['resources']['public']:
+            if "0x7f020000" == item['@id']:
+                self.assertEqual(item['@type'], 'drawable')
+                self.assertEqual(item['@name'], 'ic_launcher')
+                break
+
     # def test_get_bool_resources(self):
     #     buff = minidom.parseString(
     #         self.arscobj.get_bool_resources(self.package)).toprettyxml()
@@ -75,6 +84,7 @@ class TestAPK(unittest.TestCase):
             [('@name', 'activity_horizontal_margin'), ('#text', '16.0dip')])
 
         self.assertIn(ahm, datas['resources']['dimen'])
+
 
 if __name__ == "__main__":
     unittest.main()
