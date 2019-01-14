@@ -17,16 +17,26 @@ class StringPoolChunk(object):
     '''
 
     def __init__(self, buff):
+        self.size_of_buff = buff.size()
         self.start = buff.get_idx()
         self._cache = {}
         self.header_size, self.header = self.skipNullPadding(buff)
 
+        # 块大小
         self.chunkSize = unpack('<i', buff.read(4))[0]
+        # 字符串数
         self.stringCount = unpack('<i', buff.read(4))[0]
+        # style 数
         self.styleCount = unpack('<i', buff.read(4))[0]
+
+        # 字符串格式标记
         self.flags = unpack('<i', buff.read(4))[0]
-        # 字符串池的偏移值
+        # 字符串的格式有两种，一种是16bit，另外一种是UTF8
+        self.m_isUTF8 = (self.flags & UTF8_FLAG) != 0
+
+        # 字符串起始位置
         self.stringsStart = unpack('<i', buff.read(4))[0]
+
         # 注意：
         # 1. 如果解析的是清单，那么这个值肯定是为空的。
         # 2. 该值不可能大于小于文件的大小（开发者通常用来对抗解析工具）
@@ -34,10 +44,9 @@ class StringPoolChunk(object):
         if self.stylesStart > buff.size():
             self.stylesStart = 0
 
-        # 字符串的格式有两种，一种是16bit，另外一种是UTF8
-        self.m_isUTF8 = ((self.flags & UTF8_FLAG) != 0)
-
+        # 字符串偏移数组
         self.m_stringIndices = []
+        # style 偏移数组
         self.m_styleIndices = []
         # 字符串池
         self.m_charbuff = ""
@@ -46,14 +55,10 @@ class StringPoolChunk(object):
 
         for _ in range(0, self.stringCount):
             tmp = buff.read(4)
-            if len(tmp) < 4:
-                break
             self.m_stringIndices.append(unpack('<i', tmp)[0])
 
         for _ in range(0, self.styleCount):
             tmp = buff.read(4)
-            if len(tmp) < 4:
-                break
             self.m_styleIndices.append(unpack('<i', tmp)[0])
 
         # 4字节对齐
@@ -69,8 +74,6 @@ class StringPoolChunk(object):
 
             for _ in range(0, int(size / 4) - 1):
                 tmp = buff.read(4)
-                if len(tmp) < 4:
-                    break
                 self.m_styles.append(unpack('<i', tmp)[0])
 
     def skipNullPadding(self, buff):
@@ -78,7 +81,8 @@ class StringPoolChunk(object):
         不断地寻找 CHUNK_STRINGPOOL_TYPE，目前暂时没有遇到这种样本。
         '''
         def readNext(buff, first_run=True):
-            header = unpack('<i', buff.read(4))[0]
+            datas = unpack('<i', buff.read(4))
+            header = datas[0]
 
             if header == CHUNK_NULL_TYPE and first_run:
                 print("Skipping null padding in StringPoolChunk header")
@@ -155,17 +159,21 @@ class StringPoolChunk(object):
         return length1, sizeof_char
 
     def show(self, flag=False):
-        print(("StringPoolChunk(%d, %d, %d, %d, %d, %d)" % (
-            self.start,
-            self.chunkSize,
-            self.stringCount,
-            self.styleCount,
-            self.stringsStart,
-            self.flags)))
+        print("String Pool Chunk:")
+        print(" - start:", self.start)
+        print(" - header Size:", self.header_size)
+        print(" - chunkSize:", self.chunkSize)
+        print(" - stringCount:", self.stringCount)
+        print(" - styleCount:", self.styleCount)
+        print(" - stringsStart:", self.stringsStart)
+        print(" - stylesStart:", self.stylesStart)
+        print(" - flags:", self.flags)
+        print(" - size_of_buff:", self.size_of_buff)
         if not flag:
             return
         for i in range(0, len(self.m_stringIndices)):
             print((i, repr(self.getString(i))))
+
 
 CHUNK_RESOURCEIDS_TYPE = 0x00080180
 

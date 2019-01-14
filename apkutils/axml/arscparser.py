@@ -171,8 +171,8 @@ class ARSCParser(object):
                     entries = []
                     for j in range(0, a_res_type.entryCount):
                         current_package.mResId = current_package.mResId & 0xffff0000 | j
-                        entries.append((unpack('<i', self.buff.read(4))[0],
-                                        current_package.mResId))
+                        entries.append((unpack('<i', self.buff.read(4))[
+                                       0], current_package.mResId))
 
                     self.packages[package_name].append(entries)
 
@@ -644,20 +644,38 @@ class ARSCHeader(object):
 
     def __init__(self, buff):
         self.start = buff.get_idx()
-        tmp = buff.read(2)
-        self.type = unpack('<h', tmp)[0]
+        # 解析String Pool时，有可能少解析4byte
+        self.type = -1
+        while True:
+            if self.type > -1:
+                break
+            tmp = buff.read(2)
+            self.type = unpack('<h', tmp)[0]
+
         self.header_size = unpack('<h', buff.read(2))[0]
+        # 文件大小
         self.size = unpack('<I', buff.read(4))[0]
+
+        # print("ARSC Header:")
+        # print(' - type:', self.type)
+        # print(' - header_size:', self.header_size)
+        # print(' - size: ', self.size)
 
 
 class ARSCResTablePackage(object):
+    '''解析Package Header
+    '''
 
     def __init__(self, buff):
         self.start = buff.get_idx()
+        # package id
         self.id = unpack('<I', buff.read(4))[0]
+        # package name
         self.name = buff.readNullString(256)
+        # 资源类型 string pool 偏移
         self.typeStrings = unpack('<I', buff.read(4))[0]
         self.lastPublicType = unpack('<I', buff.read(4))[0]
+        # 资源关键字 string pool 偏移
         self.keyStrings = unpack('<I', buff.read(4))[0]
         self.lastPublicKey = unpack('<I', buff.read(4))[0]
         self.mResId = self.id << 24

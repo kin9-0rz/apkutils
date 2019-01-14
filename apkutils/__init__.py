@@ -9,6 +9,8 @@ from apkutils.axml.axmlparser import AXML
 from apkutils.dex.dexparser import DexFile
 from cigam import Magic
 
+__VERSION__ = '0.5.3'
+
 
 class APK:
 
