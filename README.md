@@ -9,12 +9,6 @@ A library that gets infos from APK.
 $ pip install apkutils
 ```
 
-Or
-
-```
-$ pip install git+https://github.com/codeskyblue/apkutils
-```
-
 ### Usage
 
 ```
