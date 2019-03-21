@@ -24,9 +24,14 @@ NO_INDEX = 0xFFFFFFFF
 def typeList(dex, off, parseClsDesc=False):
     if off == 0:
         return []
-    size = dex.u32s[off // 4]
-    u16_off = (off // 4 + 1) * 2
-    idxs = dex.u16s[u16_off:u16_off + size]
+    # size = dex.u32s[off // 4]
+    # u16_off = (off // 4 + 1) * 2
+    # idxs = dex.u16s[u16_off:u16_off + size]
+
+    st = dex.stream(off)
+    size = st.u32()
+    idxs = [st.u16() for _ in range(size)]
+
     func = dex.clsType if parseClsDesc else dex.type
     return list(map(func, idxs))
 
@@ -112,8 +117,11 @@ class MethodId(MFIdMixin):
         self.cname = dex.clsType(stream.u16())
         proto_idx = stream.u16()
         self.name = dex.string(stream.u32())
-        off = (dex.proto_ids.off + proto_idx * 12) // 4
-        shorty_idx, return_idx, parameters_off = dex.u32s[off:off + 3]
+
+        # off = (dex.proto_ids.off + proto_idx * 12) // 4
+        # shorty_idx, return_idx, parameters_off = dex.u32s[off:off + 3]
+        stream2 = dex.stream(dex.proto_ids.off + proto_idx * 12)
+        shorty_idx, return_idx, parameters_off = stream2.u32(), stream2.u32(), stream2.u32()
         self.return_type = dex.type(return_idx)
         self.param_types = typeList(dex, parameters_off)
 
@@ -175,6 +183,7 @@ class CodeItem:
         catch_addrs = set()
         for tryi in self.tries:
             catch_addrs.update(t[1] for t in tryi.catches)
+
         self.bytecode = parseBytecode(dex, insns_start_pos, insns, catch_addrs)
 
 
@@ -215,39 +224,58 @@ class ClassData:
             method_idx = 0
             for i in range(num):
                 method_idx += stream.uleb128()
-                try:
-                    methods.append(
-                        Method(dex, method_idx, stream.uleb128(), stream.uleb128()))
-                except TypeError as e:
-                    continue
+                methods.append(
+                    Method(dex, method_idx, stream.uleb128(), stream.uleb128()))
+                # try:
+                #     methods.append(
+                #         Method(dex, method_idx, stream.uleb128(), stream.uleb128()))
+                # except TypeError as e:
+                # continue
 
 
 class DexClass:
 
     def __init__(self, dex, base_off, i):
         self.dex = dex
-        offset = base_off // 4 + i * 8
-        words = dex.u32s[offset:offset + 8]
-        self.name = dex.clsType(words[0])
-        self.access = words[1]
-        self.super = dex.clsType(words[2]) if words[2] != NO_INDEX else None
-        self.interfaces = typeList(dex, words[3], parseClsDesc=True)
-        # ignore sourcefile for now
-        # ignore annotations for now
-        self.data_off = words[6]
+        st = dex.stream(base_off + i * 32)
+
+        self.name = dex.clsType(st.u32())
+        self.access = st.u32()
+        super_ = st.u32()
+        self.super = dex.clsType(super_) if super_ != NO_INDEX else None
+        self.interfaces = typeList(dex, st.u32(), parseClsDesc=True)
+        _ = st.u32()
+        _ = st.u32()
+        self.data_off = st.u32()
         self.data = None  # parse data lazily in parseData()
-        self.constant_values_off = words[7]
+        self.constant_values_off = st.u32()
+
+        # offset = base_off // 4 + i * 8
+        # words = dex.u32s[offset:offset + 8]
+        # self.name = dex.clsType(words[0])
+        # self.access = words[1]
+        # self.super = dex.clsType(words[2]) if words[2] != NO_INDEX else None
+        # self.interfaces = typeList(dex, words[3], parseClsDesc=True)
+        # # ignore sourcefile for now
+        # # ignore annotations for now
+        # self.data_off = words[6]
+        # self.data = None  # parse data lazily in parseData()
+        # self.constant_values_off = words[7]
 
     def parseData(self):
         if self.data is None:
             self.data = ClassData(self.dex, self.data_off)
             if self.constant_values_off:
                 stream = self.dex.stream(self.constant_values_off)
-                size = stream.uleb128()
-                constant_vals = [encodedValue(self.dex, stream)
-                                 for _ in range(size)]
-                for field, val in zip(self.data.fields, constant_vals):
-                    field.constant_value = val
+                for field in self.data.fields[:stream.uleb128()]:
+                    field.constant_value = encodedValue(self.dex, stream)
+            # if self.constant_values_off:
+            #     stream = self.dex.stream(self.constant_values_off)
+            #     size = stream.uleb128()
+            #     constant_vals = [encodedValue(self.dex, stream)
+            #                      for _ in range(size)]
+            #     for field, val in zip(self.data.fields, constant_vals):
+            #         field.constant_value = val
 
 
 class SizeOff:
@@ -274,8 +302,7 @@ class DexFile:
         # checksum = stream.u32()  # adler32 checksum
         # import binascii
         # sha1 = binascii.b2a_hex(stream.read(20)).decode('utf-8')
-        # skip 32(magic, magic_vers, checksum, sha1)
-        stream.read(32)
+        stream.read(32)  # skip 32(magic, magic_vers, checksum, sha1)
 
         if stream.u32() != len(self.raw):
             print('Warning, unexpected file size!')
@@ -306,14 +333,17 @@ class DexFile:
         return Reader(self.raw, offset)
 
     def string(self, i):
-        data_off = self.u32s[self.string_ids.off // 4 + i]
+        # data_off = self.u32s[self.string_ids.off // 4 + i]
+        data_off = self.stream(self.string_ids.off + i * 4).u32()
         stream = self.stream(data_off)
         stream.uleb128()  # ignore decoded length
         return stream.readCStr()
 
     def type(self, i):
         if 0 <= i < NO_INDEX:
-            return self.string(self.u32s[self.type_ids.off // 4 + i])
+            # return self.string(self.u32s[self.type_ids.off // 4 + i])
+            str_idx = self.stream(self.type_ids.off + i * 4).u32()
+            return self.string(str_idx)
 
     def clsType(self, i):
         # Can be either class _name_ or array _descriptor_

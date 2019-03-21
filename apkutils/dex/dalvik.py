@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from apkutils.dex import dalvikformats
-from apkutils.dex import util
+from . import dalvikformats, util
+
 
 class DalvikInstruction:
     def __init__(self, type_, pos, newpos, opcode, args):
@@ -24,9 +24,10 @@ class DalvikInstruction:
         self.args = args
 
         self.implicit_casts = None
-        self.prev_result = None # for move-result/exception
+        self.prev_result = None  # for move-result/exception
         self.fillarrdata = None
         self.switchdata = None
+
 
 _it = iter(range(999))
 Nop = next(_it)
@@ -76,12 +77,14 @@ BinaryOpConst = next(_it)
 INVOKE_TYPES = InvokeVirtual, InvokeSuper, InvokeDirect, InvokeStatic, InvokeInterface
 
 # instructions which Dalvik considers to throw
-THROW_TYPES = INVOKE_TYPES + (ConstString, ConstClass, MonitorEnter, MonitorExit, CheckCast, InstanceOf, ArrayLen, NewArray, NewInstance, FilledNewArray, FillArrayData, Throw, ArrayGet, ArrayPut, InstanceGet, InstancePut, StaticGet, StaticPut, BinaryOp, BinaryOpConst)
+THROW_TYPES = INVOKE_TYPES + (ConstString, ConstClass, MonitorEnter, MonitorExit, CheckCast, InstanceOf, ArrayLen, NewArray, NewInstance,
+                              FilledNewArray, FillArrayData, Throw, ArrayGet, ArrayPut, InstanceGet, InstancePut, StaticGet, StaticPut, BinaryOp, BinaryOpConst)
 # last two only if it is int/long div or rem
 
 # ignore the possiblity of linkage errors (i.e. constants and instanceof can't throw)
 # in theory MonitorExit can't throw either due to the structured locking checks, but these are broken and work inconsistently
-PRUNED_THROW_TYPES = INVOKE_TYPES + (MonitorEnter, MonitorExit, CheckCast, ArrayLen, NewArray, NewInstance, FilledNewArray, FillArrayData, Throw, ArrayGet, ArrayPut, InstanceGet, InstancePut, StaticGet, StaticPut, BinaryOp, BinaryOpConst)
+PRUNED_THROW_TYPES = INVOKE_TYPES + (MonitorEnter, MonitorExit, CheckCast, ArrayLen, NewArray, NewInstance, FilledNewArray,
+                                     FillArrayData, Throw, ArrayGet, ArrayPut, InstanceGet, InstancePut, StaticGet, StaticPut, BinaryOp, BinaryOpConst)
 
 OPCODES = util.keysToRanges({
     0x00: Nop,
@@ -109,7 +112,7 @@ OPCODES = util.keysToRanges({
     0x2d: Cmp,
     0x32: If,
     0x38: IfZ,
-    0x3e: Nop, # unused
+    0x3e: Nop,  # unused
     0x44: ArrayGet,
     0x4b: ArrayPut,
     0x52: InstanceGet,
@@ -121,17 +124,17 @@ OPCODES = util.keysToRanges({
     0x70: InvokeDirect,
     0x71: InvokeStatic,
     0x72: InvokeInterface,
-    0x73: Nop, # unused
+    0x73: Nop,  # unused
     0x74: InvokeVirtual,
     0x75: InvokeSuper,
     0x76: InvokeDirect,
     0x77: InvokeStatic,
     0x78: InvokeInterface,
-    0x79: Nop, # unused
+    0x79: Nop,  # unused
     0x7b: UnaryOp,
     0x90: BinaryOp,
     0xd0: BinaryOpConst,
-    0xe3: Nop, # unused
+    0xe3: Nop,  # unused
 }, 256)
 
 
@@ -143,29 +146,27 @@ def parseInstruction(dex, insns_start_pos, shorts, pos):
     # parse special data instructions
     switchdata = None
     fillarrdata = None
-    if word == 0x100 or word == 0x200: #switch
-        size = shorts[pos+1]
-        intoff = (insns_start_pos + pos*2 + 4)//4
+    if word == 0x100 or word == 0x200:  # switch
+        size = shorts[pos + 1]
+        st = dex.stream(insns_start_pos + pos * 2 + 4)
 
-        if word == 0x100: #packed
-            first_key = dex.u32s[intoff]
-            intoff += 1
-            targets = dex.u32s[intoff:intoff+size]
-            newpos = pos + 2 + (1 + size)*2
-            switchdata = {(i+first_key):x for i,x in enumerate(targets)}
-        else: #sparse
-            keys = dex.u32s[intoff:intoff+size]
-            intoff += size
-            targets = dex.u32s[intoff:intoff+size]
-            newpos = pos + 2 + (size + size)*2
+        if word == 0x100:  # packed
+            first_key = st.u32()
+            targets = [st.u32() for _ in range(size)]
+            newpos = pos + 2 + (1 + size) * 2
+            switchdata = {(i + first_key): x for i, x in enumerate(targets)}
+        else:  # sparse
+            keys = [st.u32() for _ in range(size)]
+            targets = [st.u32() for _ in range(size)]
+            newpos = pos + 2 + (size + size) * 2
             switchdata = dict(zip(keys, targets))
 
     if word == 0x300:
-        width = shorts[pos+1] % 16
-        size = shorts[pos+2] ^ (shorts[pos+3] << 16)
+        width = shorts[pos + 1] % 16
+        size = shorts[pos + 2] ^ (shorts[pos + 3] << 16)
         newpos = pos + ((size * width + 1) // 2 + 4)
         # get array data
-        stream = dex.stream(insns_start_pos + pos*2 + 8)
+        stream = dex.stream(insns_start_pos + pos * 2 + 8)
         func = {
             1: stream.u8,
             2: stream.u16,
@@ -180,6 +181,7 @@ def parseInstruction(dex, insns_start_pos, shorts, pos):
     instruction.switchdata = switchdata
 
     return newpos, instruction
+
 
 def parseBytecode(dex, insns_start_pos, shorts, catch_addrs):
     ops = []
@@ -200,18 +202,18 @@ def parseBytecode(dex, insns_start_pos, shorts, catch_addrs):
             instr2.prev_result = dex.type(instr.args[0])
         elif instr2.pos in catch_addrs:
             instr2.prev_result = b'Ljava/lang/Throwable;'
-    assert(0 not in catch_addrs)
+    # assert 0 not in catch_addrs
 
     # Fill in implicit cast data
     for i, instr in enumerate(ops):
-        if instr.opcode in (0x38, 0x39): # if-eqz, if-nez
-            if i > 0 and ops[i-1].type == InstanceOf:
-                prev = ops[i-1]
+        if instr.opcode in (0x38, 0x39):  # if-eqz, if-nez
+            if i > 0 and ops[i - 1].type == InstanceOf:
+                prev = ops[i - 1]
                 desc_ind = prev.args[2]
                 regs = {prev.args[1]}
 
-                if i > 1 and ops[i-2].type == Move:
-                    prev2 = ops[i-2]
+                if i > 1 and ops[i - 2].type == Move:
+                    prev2 = ops[i - 2]
                     if prev2.args[0] == prev.args[1]:
                         regs.add(prev2.args[1])
                 # Don't cast result of instanceof if it overwrites the input

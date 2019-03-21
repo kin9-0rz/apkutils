@@ -1,16 +1,18 @@
 # coding: utf-8
 import binascii
+import re
 import xml
 import zipfile
 
 import xmltodict
-from cigam import Magic
-
 from apkutils import apkfile
+from apkutils.axml.arscparser import ARSCParser
 from apkutils.axml.axmlparser import AXML
 from apkutils.dex.dexparser import DexFile
 from apkutils.manifest import Manifest
-from apkutils.axml.arscparser import ARSCParser
+from cigam import Magic
+
+__VERSION__ = '0.5.3'
 
 
 class APK:
@@ -24,7 +26,83 @@ class APK:
         self.org_strings = None
         self.opcodes = None
         self.certs = []
+        self.arsc = None
+        self.strings_refx = None
+        self.app_icon = None
         self._manifest = None
+
+    def get_app_icon(self):
+        if self.app_icon:
+            return self.app_icon
+        self._init_app_icon()
+        return self.app_icon
+
+    def _init_app_icon(self):
+        files = self.get_files()
+        result = re.search(r':icon="@(.*?)"', self.get_org_manifest())
+        ids = '0x' + result.groups()[0].lower()
+        try:
+            with apkfile.ZipFile(self.apk_path, 'r') as z:
+                data = z.read('resources.arsc')
+                self.arscobj = ARSCParser(data)
+                self.package = self.arscobj.get_packages_names()[0]
+                datas = xmltodict.parse(
+                    self.arscobj.get_public_resources(self.package))
+                for item in datas['resources']['public']:
+                    if ids != item['@id']:
+                        continue
+                    for f in files:
+                        name = f['name']
+                        if item['@type'] in name and item['@name'] in name:
+                            self.app_icon = name
+        except Exception as ex:
+            raise ex
+
+    def _init_strings_refx(self):
+        if not self.dex_files:
+            self._init_dex_files()
+
+        self.strings_refx = {}
+        for dex_file in self.dex_files:
+            for dexClass in dex_file.classes:
+                try:
+                    dexClass.parseData()
+                except IndexError:
+                    continue
+
+                for method in dexClass.data.methods:
+                    if not method.code:
+                        continue
+
+                    for bc in method.code.bytecode:
+                        # 1A const-string
+                        # 1B const-string-jumbo
+                        if bc.opcode not in {26, 27}:
+                            continue
+
+                        clsname = method.id.cname.decode()
+                        mtdname = method.id.name.decode()
+                        dexstr = dex_file.string(bc.args[1])
+                        if clsname in self.strings_refx:
+                            if mtdname in self.strings_refx[clsname]:
+                                self.strings_refx[clsname][mtdname].add(dexstr)
+                            else:
+                                self.strings_refx[clsname][mtdname] = set()
+                                self.strings_refx[clsname][mtdname].add(dexstr)
+                        else:
+                            self.strings_refx[clsname] = {}
+                            self.strings_refx[clsname][mtdname] = set()
+                            self.strings_refx[clsname][mtdname].add(dexstr)
+
+    def get_strings_refx(self):
+        """获取字符串索引，即字符串被那些类、方法使用了。
+
+        :return: 字符串索引
+        :rtype: [dict]
+        """
+        if self.strings_refx is None:
+            self._init_strings_refx()
+        return self.strings_refx
 
     def get_dex_files(self):
         if not self.dex_files:
@@ -145,6 +223,22 @@ class APK:
                 pass
             except Exception as e:
                 raise e
+
+    def _init_arsc(self):
+        ARSC_NAME = 'resources.arsc'
+        try:
+            with apkfile.ZipFile(self.apk_path, mode="r") as zf:
+                if ARSC_NAME in zf.namelist():
+                    data = zf.read(ARSC_NAME)
+                    self.arsc = ARSCParser(data)
+        except Exception as e:
+            raise e
+
+    def get_arsc(self):
+        if not self.arsc:
+            self._init_arsc()
+
+        return self.arsc
 
     def get_certs(self):
         if not self.certs:

@@ -17,3 +17,9 @@ for item in strs:
     s = binascii.unhexlify(item).decode('utf-8', errors='ignore')
     if 'helloword' in s:
         print(s)
+
+result = apk.get_strings_refx()
+for clsname in result:
+    for mtdname in result[clsname]:
+        if b'hellojni' in result[clsname][mtdname]:
+            print(clsname, mtdname, result[clsname][mtdname])
