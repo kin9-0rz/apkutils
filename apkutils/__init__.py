@@ -3,13 +3,16 @@ import re
 import xml
 
 import xmltodict
+from anytree import Node, RenderTree
+from anytree.resolver import Resolver
 from apkutils import apkfile
 from apkutils.axml.arscparser import ARSCParser
 from apkutils.axml.axmlparser import AXML
 from apkutils.dex.dexparser import DexFile
 from cigam import Magic
+from TextWizard import hash
 
-__VERSION__ = '0.5.3'
+__VERSION__ = '0.5.5'
 
 
 class APK:
@@ -27,6 +30,52 @@ class APK:
         self.arsc = None
         self.strings_refx = None
         self.app_icon = None
+        self.methods = None
+        self.trees = None  # 代码结构序列字典
+        self.application = None
+        self.main_activity = None
+        self.mini_mani = None
+        self.classes = None
+
+    @staticmethod
+    def serialize_xml(org_xml):
+        if not org_xml:
+            return None
+        _xml = re.sub(r'\n', ' ', org_xml)
+        _xml = re.sub(r'"\s+?>', '">', _xml)
+        _xml = re.sub(r'>\s+?<', '><', _xml)
+        return _xml
+
+    def get_mini_mani(self):
+        if not self.mini_mani:
+            self.mini_mani = self.serialize_xml(self.org_manifest)
+        return self.mini_mani
+
+    def get_main_activity(self):
+        if not self.main_activity:
+            self._init_main_activity()
+        return self.main_activity
+
+    def _init_main_activity(self):
+        mani = self.get_mini_mani()
+        ptn = r'<activity android:name="([^<>"]*?)">.*?<action android:name="android.intent.action.MAIN">.*?</activity>'
+        result = re.search(ptn, mani)
+        if result:
+            self.main_activity = result.groups()[0]
+
+    def get_application(self):
+        if not self.application:
+            self._init_application()
+        return self.application
+
+    def _init_application(self):
+        mani = self.get_mini_mani()
+        if not mani:
+            return
+        ptn = r'<application[^<>]*?:name="([^<>"]*?)"[^<>]*?>'
+        result = re.search(ptn, mani)
+        if result:
+            self.application = result.groups()[0]
 
     def get_app_icon(self):
         if self.app_icon:
@@ -54,6 +103,123 @@ class APK:
                             self.app_icon = name
         except Exception as ex:
             raise ex
+
+    def get_trees(self, height=2):
+        if self.trees is None:
+            self._init_trees(height)
+        return self.trees
+
+    @staticmethod
+    def pretty_print(node):
+        """漂亮地打印一个节点
+
+        Args:
+            node (TYPE): Description
+        """
+        for pre, _, node in RenderTree(node):
+            print('{}{}'.format(pre, node.name))
+
+    def _init_trees(self, height):
+        if self.methods is None:
+            self._init_methods()
+        if not self.methods:
+            return
+
+        root = Node('root')
+        r = Resolver(pathattr='name')
+
+        def find_node(path):
+            """查找节点
+
+            Args:
+                root (TYPE): Description
+                path (TYPE): Description
+
+            Returns:
+                TYPE: Description
+            """
+            try:
+                return r.glob(root, path)[0]
+            except Exception:
+                return None
+
+        def to_nodes(mtd):
+            """把一个方法，转化成节点
+
+            Args:
+                root (TYPE): 根节点
+                mtd (TYPE): Description
+
+            Returns:
+                TYPE: Node
+            """
+            current = root
+            node_path = '/root'
+            for item in mtd.split('/'):
+                node_path = node_path + '/' + item
+                tnode = find_node(node_path)
+                if tnode:
+                    current = tnode
+                else:
+                    current = Node(item, parent=current)
+
+        count = 0
+        # TODO  节点插入的顺序，决定了树的遍历顺序，及其计算结果
+        # 假设2个结构一样，但是，因为名字顺序不一样，导致插入顺序不一致
+        # 有可能导致一样的结构不一样的结果。
+        for mtd in self.methods:
+            count += 1
+            to_nodes(mtd)
+
+        def serialize_node(root_node):
+            snum = ''
+            for pre, _, node in RenderTree(root_node):
+                snum = snum + str(node.height)
+            return snum
+
+        self.trees = {}
+        for pre, _, node in RenderTree(root):
+            if node.height > height:
+                key = hash.hash(serialize_node(node), 'md5')
+                if key in self.trees:
+                    self.trees.append(node)
+                else:
+                    self.trees[key] = [node]
+
+    def get_classes(self):
+        if self.classes is None:
+            self._init_methods()
+        return self.classes
+
+    def get_methods(self):
+        """获取所有方法路径 com/a/b/mtd_name
+
+        Returns:
+            TYPE: set
+        """
+        if self.methods is None:
+            self._init_methods()
+        return self.methods
+
+    def _init_methods(self):
+        methods = set()
+        classes = set()
+        if not self.dex_files:
+            self._init_dex_files()
+        for dex_file in self.dex_files:
+            for dexClass in dex_file.classes:
+                classes.add(dexClass.name)
+                try:
+                    dexClass.parseData()
+                except IndexError:
+                    continue
+
+                for method in dexClass.data.methods:
+                    clsname = method.id.cname.decode()
+                    mtdname = method.id.name.decode()
+                    methods.add(clsname + '/' + mtdname)
+        self.methods = sorted(methods)
+        self.classes = sorted(classes)
 
     def _init_strings_refx(self):
         if not self.dex_files:
