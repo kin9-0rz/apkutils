@@ -38,5 +38,6 @@ setup(
         "cigam",
         "xmltodict",
         "anytree",
+        "TextWizard"
     ],
 )

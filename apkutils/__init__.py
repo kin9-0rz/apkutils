@@ -12,7 +12,7 @@ from apkutils.dex.dexparser import DexFile
 from cigam import Magic
 from TextWizard import hash
 
-__VERSION__ = '0.5.6'
+__VERSION__ = '0.5.7'
 
 
 class APK:

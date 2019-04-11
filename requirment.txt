@@ -2,3 +2,5 @@ xmltodict
 cigam
 pyelftools
 OpenSSL
+anytree
+TextWizard
