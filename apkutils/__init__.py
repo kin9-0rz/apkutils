@@ -12,7 +12,7 @@ from apkutils.dex.dexparser import DexFile
 from cigam import Magic
 from TextWizard import hash
 
-__VERSION__ = '0.5.9'
+__VERSION__ = '0.6.0'
 
 
 class APK:
@@ -182,7 +182,7 @@ class APK:
             if node.height > height:
                 key = hash.hash(serialize_node(node), 'md5')
                 if key in self.trees:
-                    self.trees.append(node)
+                    self.trees[key].append(node)
                 else:
                     self.trees[key] = [node]
 
