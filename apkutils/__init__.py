@@ -12,7 +12,7 @@ from apkutils.dex.dexparser import DexFile
 from cigam import Magic
 from TextWizard import hash
 
-__VERSION__ = '0.5.7'
+__VERSION__ = '0.5.8'
 
 
 class APK:
@@ -104,9 +104,9 @@ class APK:
         except Exception as ex:
             raise ex
 
-    def get_trees(self, height=2):
+    def get_trees(self, height=2, limit=5000):
         if self.trees is None:
-            self._init_trees(height)
+            self._init_trees(height, limit)
         return self.trees
 
     @staticmethod
@@ -119,9 +119,9 @@ class APK:
         for pre, _, node in RenderTree(node):
             print('{}{}'.format(pre, node.name))
 
-    def _init_trees(self, height):
+    def _init_trees(self, height, limit):
         if self.methods is None:
-            self._init_methods()
+            self._init_methods(limit)
         if not self.methods:
             return
 
@@ -188,27 +188,45 @@ class APK:
 
     def get_classes(self):
         if self.classes is None:
-            self._init_methods()
+            self._init_classes()
         return self.classes
 
-    def get_methods(self):
+    def _init_classes(self):
+        classes = set()
+        if not self.dex_files:
+            self._init_dex_files()
+
+        for dex_file in self.dex_files:
+            for dexClass in dex_file.classes:
+                classes.add(dexClass.name)
+        self.classes = sorted(classes)
+
+    def get_methods(self, limit=10000):
         """获取所有方法路径 com/a/b/mtd_name
 
         Returns:
             TYPE: set
         """
         if self.methods is None:
-            self._init_methods()
+            self._init_methods(limit)
         return self.methods
 
-    def _init_methods(self):
+    def _init_methods(self, limit=10000):
         methods = set()
-        classes = set()
         if not self.dex_files:
             self._init_dex_files()
+
+        count = 0
+        for dex_file in self.dex_files:
+            count += dex_file.method_ids.size
+            # print(dex_file.method_ids.size)
+        if limit < count:
+            return
+
+        print(count)
+
         for dex_file in self.dex_files:
             for dexClass in dex_file.classes:
-                classes.add(dexClass.name)
                 try:
                     dexClass.parseData()
                 except IndexError:
@@ -219,7 +237,6 @@ class APK:
                     mtdname = method.id.name.decode()
                     methods.add(clsname + '/' + mtdname)
         self.methods = sorted(methods)
-        self.classes = sorted(classes)
 
     def _init_strings_refx(self):
         if not self.dex_files:
