@@ -12,7 +12,7 @@ from apkutils.dex.dexparser import DexFile
 from cigam import Magic
 from TextWizard import hash
 
-__VERSION__ = '0.5.8'
+__VERSION__ = '0.5.9'
 
 
 class APK:
@@ -212,6 +212,16 @@ class APK:
         return self.methods
 
     def _init_methods(self, limit=10000):
+        """初始化方法
+
+        某些APK可能存在大量的方法，可能会相当耗时，根据情况加限制
+
+        Args:
+            limit (int, optional): 方法数量限制，超过该值，则不获取方法
+
+        Returns:
+            TYPE: 方法集合
+        """
         methods = set()
         if not self.dex_files:
             self._init_dex_files()
@@ -219,11 +229,8 @@ class APK:
         count = 0
         for dex_file in self.dex_files:
             count += dex_file.method_ids.size
-            # print(dex_file.method_ids.size)
         if limit < count:
             return
-
-        print(count)
 
         for dex_file in self.dex_files:
             for dexClass in dex_file.classes:
