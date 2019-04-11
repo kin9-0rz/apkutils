@@ -37,5 +37,6 @@ setup(
         "pyelftools",
         "cigam",
         "xmltodict",
+        "anytree",
     ],
 )
