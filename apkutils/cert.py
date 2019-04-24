@@ -5,14 +5,14 @@ from OpenSSL.crypto import _lib, _ffi, X509
 
 class Certificate:
 
-    def __init__(self, buff):
+    def __init__(self, buff, digestalgo='md5'):
         self.content = []
-        self._parse(buff)
+        self._parse(buff, digestalgo)
 
     def get(self):
         return self.content
 
-    def _parse(self, buff):
+    def _parse(self, buff, digestalgo):
         pkcs7 = crypto.load_pkcs7_data(crypto.FILETYPE_ASN1, buff)
 
         certs_stack = _ffi.NULL
@@ -33,6 +33,6 @@ class Certificate:
 
         for cert in pycerts:
             name = str(cert.get_subject())[19:-2].replace('/', ', ')
-            md5 = cert.digest('md5').decode().replace(':', '')
+            checksum = cert.digest(digestalgo).decode().replace(':', '')
 
-            self.content.append((name, md5))
+            self.content.append((name, checksum))
