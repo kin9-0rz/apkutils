@@ -12,7 +12,7 @@ from apkutils.dex.dexparser import DexFile
 from cigam import Magic
 from TextWizard import hash
 
-__VERSION__ = '0.6.0'
+__VERSION__ = '0.6.1'
 
 
 class APK:
@@ -48,7 +48,7 @@ class APK:
 
     def get_mini_mani(self):
         if not self.mini_mani:
-            self.mini_mani = self.serialize_xml(self.org_manifest)
+            self.mini_mani = self.serialize_xml(self.get_org_manifest())
         return self.mini_mani
 
     def get_main_activity(self):
@@ -58,7 +58,7 @@ class APK:
 
     def _init_main_activity(self):
         mani = self.get_mini_mani()
-        ptn = r'<activity android:name="([^<>"]*?)">.*?<action android:name="android.intent.action.MAIN">.*?</activity>'
+        ptn = r'<activity android:name="([^"]*?)"[^<>]*?>.*?<action android:name="android.intent.action.MAIN">.*?</activity>'
         result = re.search(ptn, mani)
         if result:
             self.main_activity = result.groups()[0]
