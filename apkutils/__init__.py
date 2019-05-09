@@ -12,7 +12,19 @@ from apkutils.dex.dexparser import DexFile
 from cigam import Magic
 from TextWizard import hash
 
-__VERSION__ = '0.6.2'
+__VERSION__ = '0.6.3'
+
+# 6E invoke-virtual 110
+# 6F invoke-supper
+# 70 invoke-direct
+# 71 invoke-static
+# 72 invoke-interface
+# 74 invoke-virtual/range
+# 75 invoke-supper/range
+# 76 invoke-direct/range
+# 77 invoke-static/range
+# 78 invoke-interface-range
+INVOKE_OPCODES = {0x6e, 0x6f, 0x70, 0x71, 0x72, 0x74, 0x75, 0x76, 0x77, 0x78}
 
 
 class APK:
@@ -23,8 +35,8 @@ class APK:
         self.children = None
         self.manifest = None
         self.org_manifest = None
-        self.strings = None
-        self.org_strings = None
+        self.strings = None     # 16进制字符串
+        self.org_strings = None  # 原始字符串
         self.opcodes = None
         self.certs = {}
         self.arsc = None
@@ -319,13 +331,11 @@ class APK:
                         continue
 
                     for bc in method.code.bytecode:
-                        # 6E invoke-virtual 110
-                        if bc.opcode not in {110}:
+                        if bc.opcode not in INVOKE_OPCODES:
                             continue
-
                         clsname = method.id.cname.decode()
                         mtdname = method.id.name.decode()
-                        dexstr = dex_file.string(bc.args[0])
+                        dexstr = dex_file.method_id(bc.args[0]).name
                         if clsname in self.methods_refx:
                             if mtdname in self.methods_refx[clsname]:
                                 self.methods_refx[clsname][mtdname].add(dexstr)
