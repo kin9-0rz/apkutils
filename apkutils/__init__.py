@@ -12,7 +12,7 @@ from apkutils.dex.dexparser import DexFile
 from cigam import Magic
 from TextWizard import hash
 
-__VERSION__ = '0.6.1'
+__VERSION__ = '0.6.2'
 
 
 class APK:
@@ -36,6 +36,7 @@ class APK:
         self.main_activity = None
         self.mini_mani = None
         self.classes = None
+        self.methods_refx = None
 
     @staticmethod
     def serialize_xml(org_xml):
@@ -290,6 +291,51 @@ class APK:
         if self.strings_refx is None:
             self._init_strings_refx()
         return self.strings_refx
+
+    def get_methods_refx(self):
+        """获取方法索引，即方法被那些类、方法使用了。
+
+        :return: 方法索引
+        :rtype: [dict]
+        """
+        if self.methods_refx is None:
+            self._init_methods_refx()
+        return self.methods_refx
+
+    def _init_methods_refx(self):
+        if not self.dex_files:
+            self._init_dex_files()
+
+        self.methods_refx = {}
+        for dex_file in self.dex_files:
+            for dexClass in dex_file.classes:
+                try:
+                    dexClass.parseData()
+                except IndexError:
+                    continue
+
+                for method in dexClass.data.methods:
+                    if not method.code:
+                        continue
+
+                    for bc in method.code.bytecode:
+                        # 6E invoke-virtual 110
+                        if bc.opcode not in {110}:
+                            continue
+
+                        clsname = method.id.cname.decode()
+                        mtdname = method.id.name.decode()
+                        dexstr = dex_file.string(bc.args[0])
+                        if clsname in self.methods_refx:
+                            if mtdname in self.methods_refx[clsname]:
+                                self.methods_refx[clsname][mtdname].add(dexstr)
+                            else:
+                                self.methods_refx[clsname][mtdname] = set()
+                                self.methods_refx[clsname][mtdname].add(dexstr)
+                        else:
+                            self.methods_refx[clsname] = {}
+                            self.methods_refx[clsname][mtdname] = set()
+                            self.methods_refx[clsname][mtdname].add(dexstr)
 
     def get_dex_files(self):
         if not self.dex_files:
