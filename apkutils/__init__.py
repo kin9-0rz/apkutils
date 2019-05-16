@@ -12,7 +12,7 @@ from apkutils.dex.dexparser import DexFile
 from cigam import Magic
 from TextWizard import hash
 
-__VERSION__ = '0.6.4'
+__VERSION__ = '0.6.5'
 
 # 6E invoke-virtual 110
 # 6F invoke-supper
