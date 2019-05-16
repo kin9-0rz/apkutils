@@ -54,7 +54,7 @@ class Reader:
 
     def u64(self):
         '''
-        8bytes FF FF FF FF FF FF FF FF 
+        8bytes FF FF FF FF FF FF FF FF
         '''
         return self._unpack('<Q')
 

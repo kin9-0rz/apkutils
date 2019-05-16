@@ -21,6 +21,8 @@ SPLIT = 16
 # of sharing memory with previous versions of the list when only a few elements
 # are changed. See http://en.wikipedia.org/wiki/Persistent_data_structure#Trees
 # Also, default values are not stored, so this is good for sparse arrays
+
+
 class TreeList:
     def __init__(self, default, func, data=None):
         self.default = default
@@ -45,8 +47,8 @@ class _TreeListSub:
     def __init__(self, default, direct=None, children=None):
         self.default = default
         if direct is None:
-            self.direct = [self.default]*SIZE
-            self.children = [None]*SPLIT # Subtrees allocated lazily
+            self.direct = [self.default] * SIZE
+            self.children = [None] * SPLIT  # Subtrees allocated lazily
         else:
             self.direct = direct
             self.children = children

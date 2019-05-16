@@ -81,16 +81,47 @@ INSTRUCTION_FORMAT = util.keysToRanges({
 }, 256)
 
 # parsing funcs
-def p00op(w): return []
-def pBAop(w): return [(w >> 8) & 0xF, w >> 12]
-def pAAop(w): return [w >> 8]
-def p00opAAAA(w, w2): return [w2]
-def pAAopBBBB(w, w2): return [w >> 8, w2]
-def pAAopCCBB(w, w2): return [w >> 8, w2 & 0xFF, w2 >> 8]
-def pBAopCCCC(w, w2): return [(w >> 8) & 0xF, w >> 12, w2]
-def p00opAAAAAAAA(w, w2, w3): return [w2 ^ (w3 << 16)]
-def p00opAAAABBBB(w, w2, w3): return [w2, w3]
-def pAAopBBBBBBBB(w, w2, w3): return [w >> 8, w2 ^ (w3 << 16)]
+
+
+def p00op(w):
+    return []
+
+
+def pBAop(w):
+    return [(w >> 8) & 0xF, w >> 12]
+
+
+def pAAop(w):
+    return [w >> 8]
+
+
+def p00opAAAA(w, w2):
+    return [w2]
+
+
+def pAAopBBBB(w, w2):
+    return [w >> 8, w2]
+
+
+def pAAopCCBB(w, w2):
+    return [w >> 8, w2 & 0xFF, w2 >> 8]
+
+
+def pBAopCCCC(w, w2):
+    return [(w >> 8) & 0xF, w >> 12, w2]
+
+
+def p00opAAAAAAAA(w, w2, w3):
+    return [w2 ^ (w3 << 16)]
+
+
+def p00opAAAABBBB(w, w2, w3):
+    return [w2, w3]
+
+
+def pAAopBBBBBBBB(w, w2, w3):
+    return [w >> 8, w2 ^ (w3 << 16)]
+
 
 def pAGopBBBBFEDC(w, w2, w3):
     a = w >> 12
@@ -98,13 +129,16 @@ def pAGopBBBBFEDC(w, w2, w3):
     g = (w >> 8) & 0xF
     return [w2, [c, d, e, f, g][:a]]
 
+
 def pAAopBBBBCCCC(w, w2, w3):
     a = w >> 8
-    return [w2, range(w3, w3+a)]
+    return [w2, range(w3, w3 + a)]
+
 
 def pAAopBBBBBBBBBBBBBBBB(w, w2, w3, w4, w5):
     b = w2 ^ (w3 << 16) ^ (w4 << 32) ^ (w5 << 48)
     return [w >> 8, b]
+
 
 _FUNC = {
     '10x': p00op,
@@ -133,15 +167,17 @@ _FUNC = {
     '51l': pAAopBBBBBBBBBBBBBBBB,
 }
 
+
 def sign(x, bits):
-    if x >= (1 << (bits-1)):
+    if x >= (1 << (bits - 1)):
         x -= 1 << bits
     return x
+
 
 def decode(shorts, pos, opcode):
     fmt = INSTRUCTION_FORMAT[opcode]
     size = int(fmt[0])
-    results = _FUNC[fmt](*shorts[pos:pos+size])
+    results = _FUNC[fmt](*shorts[pos:pos + size])
     # Check if we need to sign extend
     if fmt[2] == 'n':
         results[-1] = sign(results[-1], 4)

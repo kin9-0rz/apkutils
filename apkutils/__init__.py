@@ -12,7 +12,7 @@ from apkutils.dex.dexparser import DexFile
 from cigam import Magic
 from TextWizard import hash
 
-__VERSION__ = '0.6.3'
+__VERSION__ = '0.6.4'
 
 # 6E invoke-virtual 110
 # 6F invoke-supper
@@ -335,7 +335,11 @@ class APK:
                             continue
                         clsname = method.id.cname.decode()
                         mtdname = method.id.name.decode()
-                        dexstr = dex_file.method_id(bc.args[0]).name
+
+                        method_id = dex_file.method_id(bc.args[0])
+                        mtd_name = method_id.name
+                        mtd_cname = method_id.cname
+                        dexstr = mtd_cname + b'->' + mtd_name
                         if clsname in self.methods_refx:
                             if mtdname in self.methods_refx[clsname]:
                                 self.methods_refx[clsname][mtdname].add(dexstr)

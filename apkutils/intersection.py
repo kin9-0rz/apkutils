@@ -136,9 +136,9 @@ class APK_Intersection:
         return sorted(strings)
 
     def intersect_dex_apis(self):
-        """字符串交集
+        """api字符串交集
 
-        真正的字符串，不包含类名、方法名。
+        真正的字符串不包含类名、方法名。
         特征方法中定义的、使用的字符串。
         """
         def to_set(data):
