@@ -217,7 +217,4 @@ class APK_Intersection:
             for item in apk.get_files():
                 tmps.add(item.get('name'))
             files = files & tmps
-        print('res = [')
-        for item in sorted(files):
-            print("    '{}',".format(item))
-        print(']')
+        return sorted(files)
