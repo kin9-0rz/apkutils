@@ -1,6 +1,6 @@
 xmltodict
 cigam
 pyelftools
-OpenSSL
+pyopenssl
 anytree
 TextWizard
