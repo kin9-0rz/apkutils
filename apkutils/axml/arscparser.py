@@ -168,6 +168,7 @@ class ARSCParser(object):
                     self.resource_configs[package_name][a_res_type].add(
                         a_res_type.config)
 
+                    self.buff.set_idx(header.start+header.header_size)
                     entries = []
                     for j in range(0, a_res_type.entryCount):
                         current_package.mResId = current_package.mResId & 0xffff0000 | j
@@ -181,6 +182,8 @@ class ARSCParser(object):
                             break
 
                         if entry != -1:
+                            self.buff.set_idx(
+                                header.start+a_res_type.entriesStart+entry)
                             ate = ARSCResTableEntry(self.buff, res_id, pc)
                             self.packages[package_name].append(ate)
 
