@@ -33,10 +33,11 @@ setup(
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),
 
     install_requires=[
-        "pyelftools",
-        "cigam",
         "xmltodict",
+        "cigam",
+        "pyelftools",
+        "pyopenssl",
         "anytree",
-        "TextWizard"
+        "TextWizard",
     ],
 )
