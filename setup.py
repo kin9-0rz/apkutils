@@ -1,6 +1,5 @@
 import os.path
 
-from apkutils import __VERSION__
 from setuptools import find_packages, setup
 
 
@@ -11,7 +10,7 @@ def read(fname):
 setup(
     name="apkutils",
 
-    version=__VERSION__,
+    version='0.6.6',
 
     description=("Utils for parsing apk."),
     long_description=read('README.rst'),
