@@ -5,13 +5,15 @@ import xml
 import xmltodict
 from anytree import Node, RenderTree
 from anytree.resolver import Resolver
+from cigam import Magic
+from TextWizard import hash
+
 from apkutils import apkfile
 from apkutils.axml.arscparser import ARSCParser
 from apkutils.axml.axmlparser import AXML
 from apkutils.dex.dexparser import DexFile
-from cigam import Magic
-from TextWizard import hash
 
+__VERSION__ = '0.7.0'
 
 # 6E invoke-virtual 110
 # 6F invoke-supper

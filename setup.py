@@ -2,6 +2,8 @@ import os.path
 
 from setuptools import find_packages, setup
 
+from apkutils import __VERSION__
+
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
@@ -10,7 +12,7 @@ def read(fname):
 setup(
     name="apkutils",
 
-    version='0.6.6',
+    version=__VERSION__,
 
     description=("Utils for parsing apk."),
     long_description=read('README.rst'),
@@ -33,11 +35,11 @@ setup(
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),
 
     install_requires=[
-        "xmltodict",
+        "anytree",
         "cigam",
         "pyelftools",
         "pyopenssl",
-        "anytree",
         "TextWizard",
+        "xmltodict",
     ],
 )
