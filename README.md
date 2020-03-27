@@ -3,13 +3,13 @@
 
 A library that gets infos from APK.
 
-### Install and Test
+### Install
 
 ```
 $ pip install apkutils
 ```
 
-### Usage
+### 命令行使用
 
 ```
 $ python3 -m apkutils -h
@@ -26,6 +26,29 @@ optional arguments:
   -c             Show certs
   -V, --version  show program's version number and exit
 
+```
+
+### 用法
+
+```python
+import binascii
+
+from apkutils import __VERSION__, APK
+apk = APK('test.apk')
+
+if apk.get_manifest():
+    print(json.dumps(apk.get_manifest(), indent=1))
+elif apk.get_org_manifest():
+    print(apk.get_org_manifest())
+
+for item in apk.get_strings():
+    print(binascii.unhexlify(item).decode(errors='ignore'))
+
+for item in apk.get_files():
+    print(item)
+
+for item in apk.get_certs():
+    print(item)
 ```
 
 ### Reference
