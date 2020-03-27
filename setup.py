@@ -1,6 +1,5 @@
 import os.path
 
-from apkutils import __VERSION__
 from setuptools import find_packages, setup
 
 
@@ -11,7 +10,7 @@ def read(fname):
 setup(
     name="apkutils",
 
-    version=__VERSION__,
+    version='0.6.6',
 
     description=("Utils for parsing apk."),
     long_description=read('README.rst'),
@@ -34,10 +33,11 @@ setup(
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),
 
     install_requires=[
-        "pyelftools",
-        "cigam",
         "xmltodict",
+        "cigam",
+        "pyelftools",
+        "pyopenssl",
         "anytree",
-        "TextWizard"
+        "TextWizard",
     ],
 )
