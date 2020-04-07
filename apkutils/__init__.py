@@ -72,10 +72,10 @@ class APK:
 
     def _init_main_activity(self):
         mani = self.get_mini_mani()
-        ptn = r'<activity android:name="([^"]*?)"[^<>]*?>.*?<action android:name="android.intent.action.MAIN">.*?</activity>'
+        ptn = r'<activity(.*?)android:name="([^"]*?)"[^<>]*?>.*?<action android:name="android.intent.action.MAIN">.*?</activity>'
         result = re.search(ptn, mani)
         if result:
-            self.main_activity = result.groups()[0]
+            self.main_activity = result.groups()[1]
 
     def get_application(self):
         if not self.application:
