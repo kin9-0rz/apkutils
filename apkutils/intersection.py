@@ -112,7 +112,7 @@ class APK_Intersection:
 
         return (sorted(perms), sorted(actions), [result])
 
-    def intersect_dex_string_refx(self):
+    def intersect_dex_string_refx(self, filters):
         """字符串交集
 
         真正的字符串，不包含类名、方法命。
@@ -121,6 +121,14 @@ class APK_Intersection:
         def to_set(data):
             strs = set()
             for key, value in data.items():
+                skip = False
+                for item in filters:
+                    if item in key:
+                        skip = True
+                        break
+                if skip:
+                    continue
+
                 for _, v in value.items():
                     strs.update(v)
             return strs
