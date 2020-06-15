@@ -64,6 +64,29 @@ class APK_Intersection:
                 sss += '*'
         return sss
 
+    def intersect_manifest_tag_num(self):
+        result = {
+            # min max
+            'uses-permission': [0xFF, 0],
+            'activity': [0xFF, 0],
+            'receiver': [0xFF, 0],
+            'service': [0xFF, 0],
+            'provider': [0xFF, 0],
+        }
+        for item in self.apks:
+            nums = item.get_manifest_tag_numbers()
+            if nums is None:
+                continue
+            for key, value in nums.items():
+                mm = result.get(key)
+                if mm[0] > value:
+                    mm[0] = value
+                if mm[1] < value:
+                    mm[1] = value
+                result[key] = mm
+
+        return result
+
     def intersect_manifest(self):
         """清单交集
 

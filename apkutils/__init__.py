@@ -462,6 +462,32 @@ class APK:
             except Exception as e:
                 raise e
 
+    def get_manifest_tag_numbers(self):
+        """统计清单标签的个数
+        """
+        if not self.org_manifest:
+            self._init_org_manifest()
+        if self.org_manifest is None:
+            print(self.apk_path, '无法解析清单')
+            return
+
+        tag_reg = r'<([\w-]+)\s'
+        tag_ptn = re.compile(tag_reg)
+        result = {
+            'uses-permission': 0,
+            'activity': 0,
+            'receiver': 0,
+            'service': 0,
+            'provider': 0,
+        }
+        for item in tag_ptn.finditer(self.org_manifest):
+            key = item.groups()[0]
+            if key in result:
+                result[key] += 1
+        if 'android.permission.READ_PHONE_STATE' in self.org_manifest:
+            result['uses-permission'] -= 1
+        return result
+
     def _init_arsc(self):
         ARSC_NAME = 'resources.arsc'
         try:
