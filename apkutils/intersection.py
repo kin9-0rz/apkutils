@@ -142,6 +142,14 @@ class APK_Intersection:
         特征方法中定义的、使用的字符串。
         """
         def to_set(data):
+            """通过类名，过滤不必要的字符串
+
+            Args:
+                data ([type]): [description]
+
+            Returns:
+                [type]: [description]
+            """
             strs = set()
             for key, value in data.items():
                 skip = False

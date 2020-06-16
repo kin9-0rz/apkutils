@@ -444,6 +444,10 @@ class APK:
         except Exception as e:
             raise e
 
+        # fix manifest
+        self.org_manifest = re.sub(
+            r'\s:(="[\w]*?\.[\.\w]*")', r' android:name\1', self.org_manifest)
+
     def get_manifest(self):
         if not self.manifest:
             self._init_manifest()
@@ -482,10 +486,34 @@ class APK:
         }
         for item in tag_ptn.finditer(self.org_manifest):
             key = item.groups()[0]
+            if key == 'uses-permission':
+                continue
             if key in result:
                 result[key] += 1
-        if 'android.permission.READ_PHONE_STATE' in self.org_manifest:
-            result['uses-permission'] -= 1
+
+        perm_ptn = re.compile(
+            r'<uses-permission\s+?android:name="([^"]+?)"')
+        for item in perm_ptn.finditer(self.org_manifest):
+            key = item.groups()[0]
+            if key.startswith('android.permission'):
+                result['uses-permission'] += 1
+
+        api = 4
+        target_sdk_ptn = re.compile(r'android:targetSdkVersion="(\d+?)"')
+        match = target_sdk_ptn.search(self.org_manifest)
+        if match:
+            api = int(match.groups()[0])
+        else:
+            min_sdk_ptn = re.compile(r'android:minSdkVersion="(\d+?)"')
+            match = target_sdk_ptn.search(self.org_manifest)
+            if match:
+                api = int(match.groups()[0])
+
+        if api <= 3:
+            if 'android.permission.READ_PHONE_STATE' in self.org_manifest:
+                result['uses-permission'] -= 1
+            if 'android.permission.WRITE_EXTERNAL_STORAGE' in self.org_manifest:
+                result['uses-permission'] -= 1
         return result
 
     def _init_arsc(self):
