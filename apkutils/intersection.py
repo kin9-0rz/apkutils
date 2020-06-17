@@ -106,7 +106,7 @@ class APK_Intersection:
         for apk in self.apks:
             mani = apk.get_org_manifest()
             if not mani:
-                print('not mani')
+                print(apk.apk_path, 'no mani')
                 continue
             mani = self.serialize_xml(mani)
 
