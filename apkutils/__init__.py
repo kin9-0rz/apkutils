@@ -475,7 +475,8 @@ class APK:
             print(self.apk_path, '无法解析清单')
             return
 
-        tag_reg = r'<([\w-]+)\s'
+        tag_reg = r'<([\w\-\:]+)\s'
+        tag_reg = r'<([\w\-\:]+)\s[^>]*?:name="([^"]*?)"'
         tag_ptn = re.compile(tag_reg)
         result = {
             'uses-permission': 0,
@@ -485,10 +486,22 @@ class APK:
             'provider': 0,
             'version_code': 0,
         }
+
+        perms = set()
         for item in tag_ptn.finditer(self.org_manifest):
-            key = item.groups()[0]
-            if key in result:
-                result[key] += 1
+            name, value = item.groups()
+            if name == 'uses-permission':
+                perms.add(value)
+            elif 'activity' in name and name != 'activity-alias':
+                result['activity'] += 1
+            elif 'receiver' in name:
+                result['receiver'] += 1
+            elif 'service' in name:
+                result['service'] += 1
+            elif 'provider' in name:
+                result['provider'] += 1
+
+        result['uses-permission'] = len(perms)
 
         ptn = re.compile(
             r'android:versionCode="(\d+?)"')
