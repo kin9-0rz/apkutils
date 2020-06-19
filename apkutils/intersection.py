@@ -72,6 +72,7 @@ class APK_Intersection:
             'receiver': [0xFF, 0],
             'service': [0xFF, 0],
             'provider': [0xFF, 0],
+            'version_code': [0xFF, 0],
         }
         for item in self.apks:
             nums = item.get_manifest_tag_numbers()
@@ -85,22 +86,23 @@ class APK_Intersection:
                     mm[1] = value
                 result[key] = mm
 
-        return result
+        return result, nums
 
     def intersect_manifest(self):
         """清单交集
 
-        - 权限
-        - actions
-        - 清单内容交集
-
         Returns:
-            TYPE: (权限, actions, 清单内容交集)
+            TYPE: 清单内容交集
         """
-        flag = True  # 第一次
-        aflag = True
-        perms = set()
-        actions = set()
+        nums = {
+            # min max
+            'uses-permission': [0xFF, 0],
+            'activity': [0xFF, 0],
+            'receiver': [0xFF, 0],
+            'service': [0xFF, 0],
+            'provider': [0xFF, 0],
+            'version_code': [0xFF, 0],
+        }
 
         same = None
         for apk in self.apks:
@@ -110,30 +112,27 @@ class APK_Intersection:
                 continue
             mani = self.serialize_xml(mani)
 
-            if flag:
-                perms = self.get_permissions(mani)
-                flag = False
-            else:
-                perms = perms & self.get_permissions(mani)
-
-            if aflag:
-                actions = self.get_actions(mani)
-                aflag = False
-            elif not actions:
-                actions = None
-            else:
-                actions = actions & self.get_actions(mani)
-
             if not same:
                 same = mani
             else:
                 same = self.common(same, mani)
 
+            mtn = apk.get_manifest_tag_numbers()
+            if mtn is None:
+                continue
+            for key, value in mtn.items():
+                mm = nums.get(key)
+                if mm[0] > value:
+                    mm[0] = value
+                if mm[1] < value:
+                    mm[1] = value
+                nums[key] = mm
+
         result = ''
         if same:
             result = re.sub(r'"[^"]+?\*[^"]+?"', '"[^"]+?"', same)
 
-        return (sorted(perms), sorted(actions), [result])
+        return result, nums
 
     def intersect_dex_string_refx(self, filters):
         """字符串交集

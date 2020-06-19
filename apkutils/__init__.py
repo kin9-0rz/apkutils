@@ -483,20 +483,19 @@ class APK:
             'receiver': 0,
             'service': 0,
             'provider': 0,
+            'version_code': 0,
         }
         for item in tag_ptn.finditer(self.org_manifest):
             key = item.groups()[0]
-            if key == 'uses-permission':
-                continue
             if key in result:
                 result[key] += 1
 
-        perm_ptn = re.compile(
-            r'<uses-permission\s+?android:name="([^"]+?)"')
-        for item in perm_ptn.finditer(self.org_manifest):
-            key = item.groups()[0]
-            if key.startswith('android.permission'):
-                result['uses-permission'] += 1
+        ptn = re.compile(
+            r'android:versionCode="(\d+?)"')
+        for item in ptn.finditer(self.org_manifest):
+            value = item.groups()[0]
+            if value.isdigit():
+                result['version_code'] = int(value)
 
         api = 4
         target_sdk_ptn = re.compile(r'android:targetSdkVersion="(\d+?)"')
@@ -510,10 +509,12 @@ class APK:
                 api = int(match.groups()[0])
 
         if api <= 3:
+            #  If both your minSdkVersion and targetSdkVersion values are set to 3 or lower,
+            # the system implicitly grants your app these permissions
             if 'android.permission.READ_PHONE_STATE' in self.org_manifest:
-                result['uses-permission'] -= 1
+                result['uses-permission'] += 1
             if 'android.permission.WRITE_EXTERNAL_STORAGE' in self.org_manifest:
-                result['uses-permission'] -= 1
+                result['uses-permission'] += 1
         return result
 
     def _init_arsc(self):
