@@ -491,7 +491,8 @@ class APK:
         for item in tag_ptn.finditer(self.org_manifest):
             name, value = item.groups()
             if name == 'uses-permission':
-                perms.add(value)
+                if value.startswith('android.permission'):
+                    perms.add(value)
             elif 'activity' in name and name != 'activity-alias':
                 result['activity'] += 1
             elif 'receiver' in name:
