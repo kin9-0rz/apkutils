@@ -1,6 +1,8 @@
 import os.path
 import re
 
+from apkutils import wildcard
+
 
 class APK_Intersection:
 
@@ -179,12 +181,12 @@ class APK_Intersection:
 
             tmp_words = set()
             application = apk.get_application()
-
-            app_words = APK_Intersection.gen_words(application.split('.'))
-            if is_first:
-                words['application'] = app_words
-            else:
-                words['application'] &= app_words
+            if application:
+                app_words = APK_Intersection.gen_words(application.split('.'))
+                if is_first:
+                    words['application'] = app_words
+                else:
+                    words['application'] &= app_words
 
             mani = self.serialize_xml(mani)
             pieces = set()
@@ -375,8 +377,87 @@ class APK_Intersection:
 
         return sorted(strings)
 
-    def intersect_dex_opcode(self):
-        pass
+    def intersect_dex_opcode(self, is_wildcard, is_obj):
+        """[summary]
+
+        Args:
+            is_wildcard (bool): 是否通配
+            is_obj (bool): 父类是否为Object
+
+        Returns:
+            [type]: [description]
+        """
+        ops_set = set()
+        fuzzy_ops_set = set()
+        method_dict = dict()
+        is_first = True
+
+        common_opcodes = []
+
+        for apk in self.apks:
+            opcodes = apk.get_opcodes()
+            if is_first:
+                for item in opcodes:
+                    super_class = item['super_class']
+                    if is_obj and super_class != 'java/lang/Object':
+                        continue
+                    if not is_obj and super_class == 'java/lang/Object':
+                        continue
+                    common_opcodes.append(item)
+                is_first = False
+                continue
+
+            next_common_opcodes = []
+            for item1 in opcodes:
+                sup1 = item1['super_class']
+                if is_obj and sup1 != 'java/lang/Object':
+                    continue
+                if not is_obj and sup1 == 'java/lang/Object':
+                    continue
+
+                proto1 = item1['proto']
+                opcs1 = item1['opcodes']
+                len1 = len(opcs1)
+
+                if len1 < 10:
+                    continue
+
+                max_item = None
+                max_ratio = 0
+                max_len = 0
+                for item2 in common_opcodes:
+                    sup2 = item2['super_class']
+                    proto2 = item2['proto']
+                    opcs2 = item2['opcodes']
+
+                    if (sup1, proto1, opcs1) == (sup2, proto2, opcs2):
+                        if item2 not in next_common_opcodes:
+                            next_common_opcodes.append(item2)
+                        break
+
+                    if is_wildcard and (sup1, proto1) == (sup2, proto2):
+                        len2 = len(opcs2)
+                        ratio = wildcard.get_ratio(opcs1, opcs2, 2)
+                        if ratio > max_ratio:
+                            max_ratio = ratio
+                            max_item = item2
+
+                if max_ratio:
+                    com_opcs = wildcard.get_wildcards(
+                        opcs1, max_item['opcodes'])
+                    len2 = len(com_opcs)
+                    if len1 > len2:
+                        max_len = len1
+                    else:
+                        max_len = len2
+
+                    max_item['max_len'] = max_len
+                    max_item['opcodes'] = com_opcs
+                    next_common_opcodes.append(max_item)
+
+            common_opcodes = next_common_opcodes
+
+        return common_opcodes
 
     def intersect_arsc(self):
         pass
