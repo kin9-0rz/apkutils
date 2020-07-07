@@ -489,17 +489,68 @@ class APK_Intersection:
             print(apk.get_methods_refx())
             return
 
-    def intersect_resources(self):
-        flag1 = True
-        files = set()
+    def intersect_arsc(self):
+        flag = True
+        result = set()
         for apk in self.apks:
+            arsc = apk.get_arsc()
+            pns = arsc.get_packages_names()
+
+            tmps = set()
+            for item in pns:
+                for sr in arsc.get_string_resources(item):
+                    tmps.add((sr['name'], sr['value']))
+
+            if flag:
+                flag = False
+                result = tmps
+            else:
+                result = result & tmps
+
+        return result
+
+    def intersect_files(self):
+        flag1 = True
+        files1 = set()
+        for apk in self.apks:
+            tmps = set()
+            for item in apk.get_files():
+                tmps.add((item['name'], item['crc']))
+
             if flag1:
-                for item in apk.get_files():
-                    files.add(item.get('name'))
+                files1 = tmps
                 flag1 = False
-                continue
+            else:
+                files1 = files1 & tmps
+
+        flag1 = True
+        files2 = set()
+        for apk in self.apks:
             tmps = set()
             for item in apk.get_files():
                 tmps.add(item.get('name'))
-            files = files & tmps
-        return sorted(files)
+
+            if flag1:
+                files2 = tmps
+                flag1 = False
+            else:
+                files2 = files2 & tmps
+
+        flag1 = True
+        files3 = set()
+        for apk in self.apks:
+            tmps = set()
+            for item in apk.get_files():
+                tmps.add(item['crc'])
+
+            if flag1:
+                files3 = tmps
+                flag1 = False
+            else:
+                files3 = files3 & tmps
+
+        return sorted(files1), sorted(files2), sorted(files3)
+
+    def intersect_certs(self):
+        for apk in self.apks:
+            print(apk.get_certs())
