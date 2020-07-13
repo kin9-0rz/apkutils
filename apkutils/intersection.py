@@ -179,14 +179,14 @@ class APK_Intersection:
                 print(apk.apk_path, 'no mani')
                 continue
 
-            tmp_words = set()
             application = apk.get_application()
+            app_words = set()
             if application:
                 app_words = APK_Intersection.gen_words(application.split('.'))
-                if is_first:
-                    words['application'] = app_words
-                else:
-                    words['application'] &= app_words
+            if is_first:
+                words['application'] = app_words
+            else:
+                words['application'] &= app_words
 
             mani = self.serialize_xml(mani)
             pieces = set()
