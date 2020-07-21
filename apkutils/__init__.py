@@ -13,7 +13,7 @@ from apkutils.axml.arscparser import ARSCParser
 from apkutils.axml.axmlparser import AXML
 from apkutils.dex.dexparser import DexFile
 
-__version__ = '0.7.0'
+__version__ = '0.8.0'
 
 # 6E invoke-virtual 110
 # 6F invoke-supper
