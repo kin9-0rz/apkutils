@@ -139,7 +139,8 @@ class StringPoolChunk(object):
     def decode_bytes(self, data, encoding, str_len):
         string = data.decode(encoding, 'replace')
         if len(string) != str_len:
-            raise Exception("invalid decoded string length")
+            # raise Exception("invalid decoded string length")
+            return string + '.invalid_str_len'
         return string
 
     def decodeLength(self, offset, sizeof_char):

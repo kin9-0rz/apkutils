@@ -47,6 +47,15 @@ class APK_Intersection:
         label_pattern = r'android:label="([^"]+?)"'
         self.label_matcher = re.compile(label_pattern)
 
+        component_permission_pattern = r'<(\w+)\s[^>]*?:permission="([^"]*?)"'
+        self.component_permission_matcher = re.compile(component_permission_pattern)
+
+        data_scheme_pattern = r'<data\s[^>]*?:scheme="([^"]*?)"'
+        self.data_scheme_matcher = re.compile(data_scheme_pattern)
+
+        data_mime_pattern = r'<data\s[^>]*?:mimeType="([^"]*?)"'
+        self.data_mime_matcher = re.compile(data_mime_pattern)
+
     def get_permissions(self, mani):
         perms = set()
         iter = self.perm1_matcher.finditer(mani)
@@ -169,7 +178,9 @@ class APK_Intersection:
             'meta-data:name': set(),
             'meta-data:value': set(),
             'label': set(),
-
+            'component-permission': set(),
+            'data-mime': set(),
+            'data-scheme': set(),
         }
 
         same = None
@@ -244,6 +255,30 @@ class APK_Intersection:
                 words['meta-data:value'] = pieces
             else:
                 words['meta-data:value'] &= pieces
+            
+            pieces = set()
+            for item in self.component_permission_matcher.finditer(mani):
+                pieces.add(item.groups())
+            if is_first:
+                words['component-permission'] = pieces
+            else:
+                words['component-permission'] &= pieces
+            
+            pieces = set()
+            for item in self.data_mime_matcher.finditer(mani):
+                pieces.add(item.groups()[0])
+            if is_first:
+                words['data-mime'] = pieces
+            else:
+                words['data-mime'] &= pieces
+
+            pieces = set()
+            for item in self.data_scheme_matcher.finditer(mani):
+                pieces.add(item.groups()[0])
+            if is_first:
+                words['data-scheme'] = pieces
+            else:
+                words['data-scheme'] &= pieces
 
             pieces = set()
             for item in self.activity_matcher.finditer(mani):

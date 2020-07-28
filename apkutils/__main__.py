@@ -1,7 +1,7 @@
 import argparse
 import binascii
 
-from apkutils import __VERSION__, APK
+from apkutils import __version__, APK
 
 
 def main(args):
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     _parser.add_argument('-c', action='store_true',
                          help='Show certs', required=False)
     _parser.add_argument('-V', '--version', action='version',
-                         version=__VERSION__)
+                         version=__version__)
 
     _args = _parser.parse_args()
     main(_args)
