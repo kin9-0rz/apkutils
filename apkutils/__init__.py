@@ -1,17 +1,18 @@
 import binascii
 import re
 import xml
+from xml.parsers.expat import ExpatError
 
 import xmltodict
 from anytree import Node, RenderTree
 from anytree.resolver import Resolver
-from cigam import Magic
-from TextWizard import hash
-
 from apkutils import apkfile
 from apkutils.axml.arscparser import ARSCParser
 from apkutils.axml.axmlparser import AXML
 from apkutils.dex.dexparser import DexFile
+from bs4 import BeautifulSoup
+from cigam import Magic
+from TextWizard import hash
 
 __version__ = '0.8.0'
 
@@ -51,13 +52,26 @@ class APK:
         self.classes = None
         self.methods_refx = None
 
+    # @staticmethod
+    # def serialize_xml(org_xml):
+    #     if not org_xml:
+    #         return None
+    #     _xml = re.sub(r'\n', ' ', org_xml)
+    #     _xml = re.sub(r'"\s+?>', '">', _xml)
+    #     _xml = re.sub(r'>\s+?<', '><', _xml)
+    #     return _xml
+    
     @staticmethod
     def serialize_xml(org_xml):
-        if not org_xml:
-            return None
-        _xml = re.sub(r'\n', ' ', org_xml)
-        _xml = re.sub(r'"\s+?>', '">', _xml)
-        _xml = re.sub(r'>\s+?<', '><', _xml)
+        _xml = ''
+        try:
+            soup = BeautifulSoup(org_xml, features='lxml-xml')
+            _xml = re.sub(r'>[^<]+<', '><', soup.prettify())
+        except ExpatError:
+            print(org_xml, e)
+        except Exception as e:
+            print(org_xml, e)
+
         return _xml
 
     def get_mini_mani(self):

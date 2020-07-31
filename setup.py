@@ -39,5 +39,6 @@ setup(
         "pyopenssl",
         "TextWizard",
         "xmltodict",
+        "beautifulsoup4",
     ],
 )

@@ -9,6 +9,7 @@ def main(args):
 
     if args.m:
         import json
+        print(apk.get_mini_mani())
         if apk.get_manifest():
             print(json.dumps(apk.get_manifest(), indent=1))
         elif apk.get_org_manifest():
