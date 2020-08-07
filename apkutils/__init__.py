@@ -294,6 +294,9 @@ class APK:
                         # 1B const-string-jumbo
                         if bc.opcode not in {26, 27}:
                             continue
+                        
+                        if method.id.cname is None:
+                            continue
 
                         clsname = method.id.cname.decode()
                         mtdname = method.id.name.decode()
@@ -532,7 +535,7 @@ class APK:
             api = int(match.groups()[0])
         else:
             min_sdk_ptn = re.compile(r'android:minSdkVersion="(\d+?)"')
-            match = target_sdk_ptn.search(self.org_manifest)
+            match = min_sdk_ptn.search(self.org_manifest)
             if match:
                 api = int(match.groups()[0])
 

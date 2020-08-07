@@ -115,12 +115,12 @@ class APK_Intersection:
     def intersect_manifest_tag_num(self):
         result = {
             # min max
-            'uses-permission': [0xFF, 0],
-            'activity': [0xFF, 0],
-            'receiver': [0xFF, 0],
-            'service': [0xFF, 0],
-            'provider': [0xFF, 0],
-            'version_code': [0xFF, 0],
+            'uses-permission': [0xFFFFFFFF, 0],
+            'activity': [0xFFFFFFFF, 0],
+            'receiver': [0xFFFFFFFF, 0],
+            'service': [0xFFFFFFFF, 0],
+            'provider': [0xFFFFFFFF, 0],
+            'version_code': [0xFFFFFFFF, 0],
         }
         for item in self.apks:
             nums = item.get_manifest_tag_numbers()
@@ -133,6 +133,7 @@ class APK_Intersection:
                 if mm[1] < value:
                     mm[1] = value
                 result[key] = mm
+        
 
         return result, nums
 
@@ -189,31 +190,22 @@ class APK_Intersection:
         """
         nums = {
             # min max
-            'uses-permission': [0xFF, 0],
-            'activity': [0xFF, 0],
-            'receiver': [0xFF, 0],
-            'service': [0xFF, 0],
-            'provider': [0xFF, 0],
-            'version_code': [0xFF, 0],
+            'uses-permission': [0xFFFFFFFF, 0],
+            'activity': [0xFFFFFFFF, 0],
+            'receiver': [0xFFFFFFFF, 0],
+            'service': [0xFFFFFFFF, 0],
+            'provider': [0xFFFFFFFF, 0],
+            'version_code': [0xFFFFFFFF, 0],
         }
 
         is_first = True
         words = {
-            # 'uses-permission': set(),
             'application': set(),
             'activity': set(),
             'activity-alias': set(),
             'receiver': set(),
             'service': set(),
             'provider': set(),
-
-            # 'action': set(),
-            # 'meta-data:name': set(),
-            # 'meta-data:value': set(),
-            # 'label': set(),
-            # 'component-permission': set(),
-            # 'data-mime': set(),
-            # 'data-scheme': set(),
         }
 
         words2 = set()
@@ -239,87 +231,6 @@ class APK_Intersection:
                 words['application'] = app_words
             else:
                 words['application'] &= app_words
-
-            # mani = self.serialize_xml(mani)
-            # pieces = set()
-            # for item in self.perm1_matcher.finditer(mani):
-            #     pieces.add(item.groups()[0])
-            # if is_first:
-            #     words['uses-permission'] = pieces
-            # else:
-            #     words['uses-permission'] &= pieces
-
-            # pieces = set()
-            # for item in self.uses_feature_matcher.finditer(mani):
-            #     pieces.add(item.groups()[0])
-            # if is_first:
-            #     words['uses-feature'] = pieces
-            # else:
-            #     words['uses-feature'] &= pieces
-
-            # pieces = set()
-            # for item in self.action_matcher.finditer(mani):
-            #     pieces.add(item.groups()[0])
-            # if is_first:
-            #     words['action'] = pieces
-            # else:
-            #     words['action'] &= pieces
-
-            # pieces = set()
-            # for item in self.category_matcher.finditer(mani):
-            #     pieces.add(item.groups()[0])
-            # if is_first:
-            #     words['category'] = pieces
-            # else:
-            #     words['category'] &= pieces
-
-            # pieces = set()
-            # for item in self.label_matcher.finditer(mani):
-            #     pieces.add(item.groups()[0])
-            # if is_first:
-            #     words['label'] = pieces
-            # else:
-            #     words['label'] &= pieces
-
-            # pieces = set()
-            # for item in self.meta_name_matcher.finditer(mani):
-            #     pieces.add(item.groups()[0])
-            # if is_first:
-            #     words['meta-data:name'] = pieces
-            # else:
-            #     words['meta-data:name'] &= pieces
-
-            # pieces = set()
-            # for item in self.meta_value_matcher.finditer(mani):
-            #     pieces.add(item.groups()[0])
-            # if is_first:
-            #     words['meta-data:value'] = pieces
-            # else:
-            #     words['meta-data:value'] &= pieces
-
-            # pieces = set()
-            # for item in self.component_permission_matcher.finditer(mani):
-            #     pieces.add(item.groups())
-            # if is_first:
-            #     words['component-permission'] = pieces
-            # else:
-            #     words['component-permission'] &= pieces
-
-            # pieces = set()
-            # for item in self.data_mime_matcher.finditer(mani):
-            #     pieces.add(item.groups()[0])
-            # if is_first:
-            #     words['data-mime'] = pieces
-            # else:
-            #     words['data-mime'] &= pieces
-
-            # pieces = set()
-            # for item in self.data_scheme_matcher.finditer(mani):
-            #     pieces.add(item.groups()[0])
-            # if is_first:
-            #     words['data-scheme'] = pieces
-            # else:
-            #     words['data-scheme'] &= pieces
 
             pieces = set()
             for item in self.activity_matcher.finditer(mani):
@@ -534,9 +445,6 @@ class APK_Intersection:
             common_opcodes = next_common_opcodes
 
         return common_opcodes
-
-    def intersect_arsc(self):
-        pass
 
     def intersect_mf(self):
         pass
