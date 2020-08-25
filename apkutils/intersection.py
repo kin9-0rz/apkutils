@@ -175,8 +175,11 @@ class APK_Intersection:
                     parseList(k, v)
                 elif isinstance(v, str):
                     words.add((node, k, v))
+                elif v is None:
+                    continue
                 else:
                     print(type(v))
+                    print(node, k, v)
         
         parseOrderedDict('root', j)
         
@@ -213,6 +216,7 @@ class APK_Intersection:
         same = None
         for apk in self.apks:
             mani = apk.get_mini_mani()
+            mani = re.sub(r' \w+:', ' android:', mani)# 修复异常节点
             if not mani:
                 print(apk.apk_path, 'no mani')
                 continue
