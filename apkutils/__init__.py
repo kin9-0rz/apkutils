@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 from cigam import Magic
 from TextWizard import hash
 
-__version__ = '0.8.0'
+__version__ = '0.8.1'
 
 # 6E invoke-virtual 110
 # 6F invoke-supper
