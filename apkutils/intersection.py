@@ -217,6 +217,8 @@ class APK_Intersection:
         for apk in self.apks:
             mani = apk.get_mini_mani()
             mani = re.sub(r' \w+:', ' android:', mani)# 修复异常节点
+            mani = mani.replace('android:android="http://schemas.android.com/apk/res/android"', 'xmlns:android="http://schemas.android.com/apk/res/android"')
+            
             if not mani:
                 print(apk.apk_path, 'no mani')
                 continue

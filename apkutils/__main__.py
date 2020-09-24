@@ -25,7 +25,7 @@ def main(args):
 
     elif args.c:
         for item in apk.get_certs():
-            print(item)
+            print(item[0], item[1])
 
 
 if __name__ == '__main__':

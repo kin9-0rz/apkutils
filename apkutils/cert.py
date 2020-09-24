@@ -32,7 +32,9 @@ class Certificate:
             return None
 
         for cert in pycerts:
-            name = str(cert.get_subject())[19:-2].replace('/', ', ')
+            sbj = cert.get_subject()
+            name = 'C={}, ST={}, L={}, O={}, CN={}'.format(
+                sbj.C, sbj.ST, sbj.L, sbj.O, sbj.CN
+            )
             checksum = cert.digest(digestalgo).decode().replace(':', '')
-
             self.content.append((name, checksum))
