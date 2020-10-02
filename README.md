@@ -9,7 +9,7 @@ A library that gets infos from APK.
 $ pip install apkutils
 ```
 
-### 命令行使用
+### Options
 
 ```
 $ python3 -m apkutils -h
@@ -28,7 +28,7 @@ optional arguments:
 
 ```
 
-### 用法
+### Usage
 
 ```python
 import binascii
