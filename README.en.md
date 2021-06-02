@@ -11,6 +11,19 @@ A Parser for APK, Dex, ARSC, AXML, ELF.
 
 ```
 pip install apkutils
+
+❯ apkutils
+Usage: apkutils [OPTIONS] COMMAND [ARGS]...
+
+Options:
+  --version  Show the version and exit.
+  --help     Show this message and exit.
+
+Commands:
+  certs     打印证书
+  files     打印文件
+  manifest  打印清单
+  strings   打印Dex中的字符串
 ```
 
 Please refer to the `examples` directory for use.
