@@ -1,7 +1,6 @@
 """Console script for apkutils."""
 import binascii
 import sys
-from os import error
 
 import click
 
