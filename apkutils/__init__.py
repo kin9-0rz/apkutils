@@ -12,14 +12,14 @@ from xml.parsers.expat import ExpatError
 import xmltodict
 from anytree import Node, RenderTree
 from anytree.resolver import Resolver
-from apkutils import apkfile
-from apkutils.axml.arscparser import ARSCParser
-from apkutils.axml.axmlparser import AXML
-from apkutils.dex.dexparser import DexFile
 from bs4 import BeautifulSoup
 from cigam import Magic
 from petty import hash
 
+from apkutils import apkfile
+from apkutils.axml.arscparser import ARSCParser
+from apkutils.axml.axmlparser import AXML
+from apkutils.dex.dexparser import DexFile
 
 # 6E invoke-virtual 110
 # 6F invoke-supper
@@ -65,7 +65,7 @@ class APK:
     #     _xml = re.sub(r'"\s+?>', '">', _xml)
     #     _xml = re.sub(r'>\s+?<', '><', _xml)
     #     return _xml
-    
+
     @staticmethod
     def serialize_xml(org_xml):
         _xml = ''
@@ -299,7 +299,7 @@ class APK:
                         # 1B const-string-jumbo
                         if bc.opcode not in {26, 27}:
                             continue
-                        
+
                         if method.id.cname is None:
                             continue
 
@@ -484,7 +484,7 @@ class APK:
                 self.manifest = xmltodict.parse(
                     self.org_manifest, False)['manifest']
             except xml.parsers.expat.ExpatError as e:
-                pass
+                raise e
             except Exception as e:
                 raise e
 
