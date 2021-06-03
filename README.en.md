@@ -12,7 +12,7 @@ A Parser for APK, Dex, ARSC, AXML, ELF.
 ```
 pip install apkutils
 
-❯ apkutils
+❯ apkutils --help
 Usage: apkutils [OPTIONS] COMMAND [ARGS]...
 
 Options:
@@ -20,6 +20,7 @@ Options:
   --help     Show this message and exit.
 
 Commands:
+  arsc      打印arsc
   certs     打印证书
   files     打印文件
   manifest  打印清单
