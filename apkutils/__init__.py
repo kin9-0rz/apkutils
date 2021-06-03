@@ -2,7 +2,7 @@
 
 __author__ = """King Orz"""
 __email__ = 'kin9-0rz@outlook.com'
-__version__ = '0.8.4'
+__version__ = '0.9.0'
 
 import binascii
 import re
