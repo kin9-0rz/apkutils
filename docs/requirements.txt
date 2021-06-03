@@ -1,1 +1,9 @@
+Click>=7.0
+anytree
+cigam
+pyelftools
+pyopenssl
 xmltodict
+beautifulsoup4
+petty
+androguard
