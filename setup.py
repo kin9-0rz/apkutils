@@ -16,6 +16,7 @@ requirements = [
     "xmltodict",
     "beautifulsoup4",
     "petty",
+    "androguard",
 ]
 
 setup_requirements = ['pytest-runner', ]

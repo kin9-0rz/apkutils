@@ -15,9 +15,11 @@ from anytree.resolver import Resolver
 from bs4 import BeautifulSoup
 from cigam import Magic
 from petty import hash
+from androguard.core.bytecodes.axml import AXMLPrinter, ARSCParser
+from lxml import etree
 
 from apkutils import apkfile
-from apkutils.axml.arscparser import ARSCParser
+# from apkutils.axml.arscparser import ARSCParser
 from apkutils.axml.axmlparser import AXML
 from apkutils.dex.dexparser import DexFile
 
@@ -33,6 +35,8 @@ from apkutils.dex.dexparser import DexFile
 # 78 invoke-interface-range
 INVOKE_OPCODES = {0x6e, 0x6f, 0x70, 0x71, 0x72, 0x74, 0x75, 0x76, 0x77, 0x78}
 
+NS_ANDROID_URI = 'http://schemas.android.com/apk/res/android'
+NS_ANDROID = '{{{}}}'.format(NS_ANDROID_URI)  # Namespace as used by etree
 
 class APK:
 
@@ -458,9 +462,16 @@ class APK:
                 if ANDROID_MANIFEST in zf.namelist():
                     data = zf.read(ANDROID_MANIFEST)
                     try:
-                        axml = AXML(data)
-                        if axml.is_valid:
-                            self.org_manifest = axml.get_xml()
+                        
+
+                        self.axml = AXMLPrinter(data).get_xml_obj()
+                        buff = etree.tostring(self.axml, pretty_print=True, encoding="utf-8")
+                        self.org_manifest = buff.decode("UTF-8")
+                        
+                        # axml = AXML(data)
+                        # if axml.is_valid:
+                        #     self.org_manifest = axml.get_xml()
+
                     except Exception as e:
                         raise e
         except Exception as e:
@@ -469,7 +480,48 @@ class APK:
         # fix manifest
         self.org_manifest = re.sub(
             r'\s:(="[\w]*?\.[\.\w]*")', r' android:name\1', self.org_manifest)
+    
+    def get_main_activities(self):
+        x = set()
+        y = set()
 
+        activities_and_aliases = self.axml.findall(".//activity") + \
+                                     self.axml.findall(".//activity-alias")
+
+        for item in activities_and_aliases:
+            # Some applications have more than one MAIN activity.
+            # For example: paid and free content
+            activityEnabled = item.get(self._ns("enabled"))
+            if activityEnabled == "false":
+                continue
+
+            for sitem in item.findall(".//action"):
+                val = sitem.get(self._ns("name"))
+                if val == "android.intent.action.MAIN":
+                    activity = item.get(self._ns("name"))
+                    if activity is not None:
+                        x.add(item.get(self._ns("name")))
+                    else:
+                        print('Main activity without name')
+
+            for sitem in item.findall(".//category"):
+                val = sitem.get(self._ns("name"))
+                if val == "android.intent.category.LAUNCHER":
+                    activity = item.get(self._ns("name"))
+                    if activity is not None:
+                        y.add(item.get(self._ns("name")))
+                    else:
+                        print('Launcher activity without name')
+
+        return x.intersection(y)
+
+    @staticmethod
+    def _ns(name):
+        """
+        return the name including the Android namespace URI
+        """
+        return NS_ANDROID + name
+    
     def get_manifest(self):
         if not self.manifest:
             self._init_manifest()
