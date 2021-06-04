@@ -1,3 +1,5 @@
+# copy from https://github.com/kin9-0rz/androguard/blob/master/androguard/core/bytecodes/axml/types.py
+
 # Type definiton for (type, data) tuples representing a value
 # See http://androidxref.com/9.0.0_r3/xref/frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h#262
 
