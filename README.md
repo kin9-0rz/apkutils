@@ -1,6 +1,7 @@
 # apkutils
 
-[![PyPI version](https://badge.fury.io/py/apkutils.svg)](https://badge.fury.io/py/apkutils) [![GitHub license](https://img.shields.io/github/license/mikusjelly/apkutils.svg)](https://github.com/mikusjelly/apkutils/blob/master/LICENSE)
+[![PyPI version](https://img.shields.io/pypi/v/apkutils.svg)](https://pypi.python.org/pypi/apkutils)
+[![Documentation Status](https://readthedocs.org/projects/apkutils/badge/?version=latest)](https://apkutils.readthedocs.io/en/latest/?badge=latest) [![GitHub license](https://img.shields.io/github/license/mikusjelly/apkutils.svg)](https://github.com/mikusjelly/apkutils/blob/master/LICENSE)
 
 #### 介绍
 
