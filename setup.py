@@ -51,6 +51,7 @@ setup(
     keywords='apkutils',
     name='apkutils',
     packages=find_packages(include=['apkutils', 'apkutils.*']),
+    package_data={"apkutils.axml": ['public.xml']}
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,
