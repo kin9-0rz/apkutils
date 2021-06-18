@@ -137,8 +137,10 @@ class APK:
                         name = f['name']
                         if item['@type'] in name and item['@name'] in name:
                             self.app_icon = name
-        except Exception as ex:
-            raise ex
+        except Exception as e:
+            print(self.apk_path)
+            print(e)
+
 
     def get_trees(self, height=2, limit=5000):
         if self.trees is None:
@@ -392,8 +394,10 @@ class APK:
                             and Magic(data).get_type() == 'dex':
                         dex_file = DexFile(data)
                         self.dex_files.append(dex_file)
-        except Exception as ex:
-            raise ex
+        except Exception as e:
+            print(self.apk_path)
+            print(e)
+
 
     def get_strings(self):
         if not self.strings:
@@ -447,7 +451,9 @@ class APK:
                     # item["sha1"] = ""
                     self.children.append(item)
         except Exception as e:
-            raise e
+            print(self.apk_path)
+            print(e)
+
 
     def get_org_manifest(self):
         if not self.org_manifest:
@@ -469,7 +475,9 @@ class APK:
                     except Exception as e:
                         raise e
         except Exception as e:
-            raise e
+            print(self.apk_path)
+            print(e)
+
 
         # fix manifest
         self.org_manifest = re.sub(
@@ -607,7 +615,9 @@ class APK:
                     data = zf.read(ARSC_NAME)
                     self.arsc = ARSCParser(data)
         except Exception as e:
-            raise e
+            print(self.apk_path)
+            print(e)
+
 
     def get_arsc(self):
         if not self.arsc:
@@ -632,7 +642,8 @@ class APK:
                             cert = Certificate(data, digestalgo=digestalgo)
                             self.certs[digestalgo] = cert.get()
         except Exception as e:
-            raise e
+            print(self.apk_path)
+            print(e)
 
     def get_opcodes(self):
         if not self.opcodes:
