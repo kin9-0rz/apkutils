@@ -138,7 +138,27 @@ OPCODES = util.keysToRanges({
 }, 256)
 
 
+    # ops = []
+    # pos = 0
+    # while pos < len(shorts):
+            # dex 指令位置，指令数组， 0
+    #     pos, op = parseInstruction(dex, insns_start_pos, shorts, pos)
+    #     ops.append(op)
+
 def parseInstruction(dex, insns_start_pos, shorts, pos):
+    """[summary]
+
+    :param dex: dex
+    :type dex: [type]
+    :param insns_start_pos: 指令偏移位置
+    :type insns_start_pos: [type]
+    :param shorts: 指令数量
+    :type shorts: [type]
+    :param pos: try指令的位置
+    :type pos: [type]
+    :return: [description]
+    :rtype: [type]
+    """
     word = shorts[pos]
     opcode = word & 0xFF
     newpos, args = dalvikformats.decode(shorts, pos, opcode)
@@ -182,8 +202,21 @@ def parseInstruction(dex, insns_start_pos, shorts, pos):
 
     return newpos, instruction
 
-
+#  dex，文件偏移， 指令数字
 def parseBytecode(dex, insns_start_pos, shorts, catch_addrs):
+    """[summary]
+
+    :param dex: Dex
+    :type dex: [type]
+    :param insns_start_pos: 指令开始的偏移位置
+    :type insns_start_pos: [type]
+    :param shorts: 指令数量
+    :type shorts: 
+    :param catch_addrs: try catch的位置
+    :type catch_addrs: [type]
+    :return: [description]
+    :rtype: [type]
+    """
     ops = []
     pos = 0
     while pos < len(shorts):

@@ -175,6 +175,8 @@ class CodeItem:
         insns = [stream.u16() for _ in range(self.insns_size)]
         if tries_size and self.insns_size & 1:
             stream.u16()  # padding
+
+        # try catch 语句处理
         self.tries = [TryItem(stream) for _ in range(tries_size)]
         self.list_off = stream.pos
         for item in self.tries:

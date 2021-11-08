@@ -12,6 +12,8 @@ def test_get_strings_refx():
     for clsname in result:
         for mtdname in result[clsname]:
             if b'hellojni' in result[clsname][mtdname]:
-                print(clsname, mtdname, result[clsname][mtdname])
+                assert clsname == 'com/example/hellojni/MainActivity'
+                assert mtdname == '<clinit>'
+                # print(clsname, mtdname, result[clsname][mtdname])
 
 

@@ -17,21 +17,26 @@ def main():
 
 
 @main.command()
-@click.argument('path')
+@click.argument("path")
 def manifest(path):
     """打印清单"""
     apk = APK(path)
 
-    sys.stdout.write(highlight(apk.get_org_manifest(),
-                               get_lexer_by_name("xml"), TerminalFormatter()))
+    sys.stdout.write(
+        highlight(apk.get_org_manifest(), get_lexer_by_name("xml"), TerminalFormatter())
+    )
 
     apk.get_main_activities()
 
 
 @main.command()
-@click.argument('path')
-@click.option('--res_type', type=click.Choice(
-    ['string', 'strings', 'bool', 'id', 'color', 'dimen', 'integer', 'public']))
+@click.argument("path")
+@click.option(
+    "--res_type",
+    type=click.Choice(
+        ["string", "strings", "bool", "id", "color", "dimen", "integer", "public"]
+    ),
+)
 def arsc(path, res_type):
     """打印arsc"""
     apk = APK(path)
@@ -39,41 +44,40 @@ def arsc(path, res_type):
 
     package = list(arsc.packages.keys())[0]
 
-    data = ''
+    data = ""
 
-    if res_type == 'string':
+    if res_type == "string":
         data = arsc.get_string_resources(package)
-    elif res_type == 'bool':
+    elif res_type == "bool":
         data = arsc.get_bool_resources(package)
-    elif res_type == 'id':
+    elif res_type == "id":
         data = arsc.get_id_resources(package)
-    elif res_type == 'color':
+    elif res_type == "color":
         data = arsc.get_color_resources(package)
-    elif res_type == 'dimen':
+    elif res_type == "dimen":
         data = arsc.get_dimen_resources(package)
-    elif res_type == 'integer':
+    elif res_type == "integer":
         data = arsc.get_integer_resources(package)
-    elif res_type == 'public':
+    elif res_type == "public":
         data = arsc.get_public_resources(package)
-    elif res_type == 'strings':
+    elif res_type == "strings":
         data = arsc.get_strings_resources()
 
-    sys.stdout.write(highlight(data,
-                               get_lexer_by_name("xml"), TerminalFormatter()))
+    sys.stdout.write(highlight(data, get_lexer_by_name("xml"), TerminalFormatter()))
 
 
 @main.command()
-@click.argument('path')
+@click.argument("path")
 def strings(path):
     """打印Dex中的字符串"""
     apk = APK(path)
     s = sorted(apk.get_strings())
     for item in s:
-        print(binascii.unhexlify(item).decode(errors='ignore'))
+        print(binascii.unhexlify(item).decode(errors="ignore"))
 
 
 @main.command()
-@click.argument('path')
+@click.argument("path")
 def files(path):
     """打印文件"""
     apk = APK(path)
@@ -82,7 +86,7 @@ def files(path):
 
 
 @main.command()
-@click.argument('path')
+@click.argument("path")
 def certs(path):
     """打印证书"""
     apk = APK(path)

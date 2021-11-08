@@ -1,34 +1,53 @@
-========
+
 apkutils
 ========
 
 
-.. image:: https://img.shields.io/pypi/v/apkutils.svg
-        :target: https://pypi.python.org/pypi/apkutils
+.. image:: https://img.shields.io/pypi/v/apkutils?style=for-the-badge
+   :target: https://img.shields.io/pypi/v/apkutils?style=for-the-badge
+   :alt: PyPI
+ 
+.. image:: https://img.shields.io/pypi/status/apkutils?style=for-the-badge
+   :target: https://img.shields.io/pypi/status/apkutils?style=for-the-badge
+   :alt: PyPI - Status
+ 
+.. image:: https://img.shields.io/pypi/pyversions/apkutils?style=for-the-badge
+   :target: https://img.shields.io/pypi/pyversions/apkutils?style=for-the-badge
+   :alt: PyPI - Python Version
+  
+.. image:: https://img.shields.io/pypi/dw/apkutils?style=for-the-badge
+   :target: https://img.shields.io/pypi/dw/apkutils?style=for-the-badge
+   :alt: PyPI - Downloads
+ 
+.. image:: https://img.shields.io/pypi/l/apkutils?style=for-the-badge
+   :target: https://img.shields.io/pypi/l/apkutils?style=for-the-badge
+   :alt: PyPI - License
 
-.. image:: https://readthedocs.org/projects/apkutils/badge/?version=latest
-        :target: https://apkutils.readthedocs.io/en/latest/?badge=latest
-        :alt: Documentation Status
 
-.. image:: https://img.shields.io/pypi/l/apkutils?color=green
-        :alt: PyPI - License
+介绍
+~~~~
 
-a parser for apk, dex, axml, arsc
+一个用于解析APK、Dex、AXML、ARSC、ELF的解析库。
 
+安装教程
+~~~~~~~~
 
-* Free software: MIT license
-* Documentation: https://apkutils.readthedocs.io.
+.. code-block::
 
+   pip install apkutils
 
-Features
---------
+   ❯ apkutils --help
+   Usage: apkutils [OPTIONS] COMMAND [ARGS]...
 
-* TODO
+   Options:
+     --version  Show the version and exit.
+     --help     Show this message and exit.
 
-Credits
--------
+   Commands:
+     arsc      打印arsc
+     certs     打印证书
+     files     打印文件
+     manifest  打印清单
+     strings   打印Dex中的字符串
 
-This package was created with Cookiecutter_ and the `kin9-0rz/cookiecutter-pypackage`_ project template.
-
-.. _Cookiecutter: https://github.com/audreyr/cookiecutter
-.. _`kin9-0rz/cookiecutter-pypackage`: https://gitee.com/kin9-0rz/cookiecutter-pypackage
+请参考\ ``examples``\ 目录使用。

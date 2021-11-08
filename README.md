@@ -1,7 +1,6 @@
 # apkutils
 
-[![PyPI version](https://img.shields.io/pypi/v/apkutils.svg)](https://pypi.python.org/pypi/apkutils)
-[![Documentation Status](https://readthedocs.org/projects/apkutils/badge/?version=latest)](https://apkutils.readthedocs.io/en/latest/?badge=latest) [![GitHub license](https://img.shields.io/github/license/mikusjelly/apkutils.svg)](https://github.com/mikusjelly/apkutils/blob/master/LICENSE)
+![PyPI](https://img.shields.io/pypi/v/apkutils?style=for-the-badge) ![PyPI - Status](https://img.shields.io/pypi/status/apkutils?style=for-the-badge) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/apkutils?style=for-the-badge)  ![PyPI - Downloads](https://img.shields.io/pypi/dw/apkutils?style=for-the-badge) ![PyPI - License](https://img.shields.io/pypi/l/apkutils?style=for-the-badge)
 
 #### 介绍
 

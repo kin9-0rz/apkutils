@@ -1,21 +1,17 @@
-"""Top-level package for apkutils."""
-
-__author__ = """King Orz"""
-__email__ = 'kin9-0rz@outlook.com'
-__version__ = '0.10.2'
+__version__ = "0.11.0"
 
 import binascii
+import hashlib
 import re
 import xml
 from xml.parsers.expat import ExpatError
 
+import pyftype
 import xmltodict
 from anytree import Node, RenderTree
 from anytree.resolver import Resolver
 from bs4 import BeautifulSoup
-from cigam import Magic
 from lxml import etree
-from petty import hash
 
 from apkutils import apkfile
 from apkutils.axml import ARSCParser, AXMLPrinter
@@ -31,21 +27,20 @@ from apkutils.dex.dexparser import DexFile
 # 76 invoke-direct/range
 # 77 invoke-static/range
 # 78 invoke-interface-range
-INVOKE_OPCODES = {0x6e, 0x6f, 0x70, 0x71, 0x72, 0x74, 0x75, 0x76, 0x77, 0x78}
+INVOKE_OPCODES = {0x6E, 0x6F, 0x70, 0x71, 0x72, 0x74, 0x75, 0x76, 0x77, 0x78}
 
-NS_ANDROID_URI = 'http://schemas.android.com/apk/res/android'
-NS_ANDROID = '{{{}}}'.format(NS_ANDROID_URI)  # Namespace as used by etree
+NS_ANDROID_URI = "http://schemas.android.com/apk/res/android"
+NS_ANDROID = "{{{}}}".format(NS_ANDROID_URI)  # Namespace as used by etree
 
 
 class APK:
-
     def __init__(self, apk_path):
         self.apk_path = apk_path
         self.dex_files = None
         self.children = None
         self.manifest = None
         self.org_manifest = None
-        self.strings = None     # 16进制字符串
+        self.strings = None  # 16进制字符串
         self.org_strings = None  # 原始字符串
         self.opcodes = None
         self.certs = {}
@@ -71,10 +66,10 @@ class APK:
 
     @staticmethod
     def serialize_xml(org_xml):
-        _xml = ''
+        _xml = ""
         try:
-            soup = BeautifulSoup(org_xml, features='lxml-xml')
-            _xml = re.sub(r'>[^<]+<', '><', soup.prettify())
+            soup = BeautifulSoup(org_xml, features="lxml-xml")
+            _xml = re.sub(r">[^<]+<", "><", soup.prettify())
         except ExpatError:
             print(org_xml, e)
         except Exception as e:
@@ -122,25 +117,23 @@ class APK:
     def _init_app_icon(self):
         files = self.get_files()
         result = re.search(r':icon="@(.*?)"', self.get_org_manifest())
-        ids = '0x' + result.groups()[0].lower()
+        ids = "0x" + result.groups()[0].lower()
         try:
-            with apkfile.ZipFile(self.apk_path, 'r') as z:
-                data = z.read('resources.arsc')
+            with apkfile.ZipFile(self.apk_path, "r") as z:
+                data = z.read("resources.arsc")
                 self.arscobj = ARSCParser(data)
                 self.package = self.arscobj.get_packages_names()[0]
-                datas = xmltodict.parse(
-                    self.arscobj.get_public_resources(self.package))
-                for item in datas['resources']['public']:
-                    if ids != item['@id']:
+                datas = xmltodict.parse(self.arscobj.get_public_resources(self.package))
+                for item in datas["resources"]["public"]:
+                    if ids != item["@id"]:
                         continue
                     for f in files:
-                        name = f['name']
-                        if item['@type'] in name and item['@name'] in name:
+                        name = f["name"]
+                        if item["@type"] in name and item["@name"] in name:
                             self.app_icon = name
         except Exception as e:
             print(self.apk_path)
             print(e)
-
 
     def get_trees(self, height=2, limit=5000):
         if self.trees is None:
@@ -155,7 +148,7 @@ class APK:
             node (TYPE): Description
         """
         for pre, _, node in RenderTree(node):
-            print('{}{}'.format(pre, node.name))
+            print("{}{}".format(pre, node.name))
 
     def _init_trees(self, height, limit):
         if self.methods is None:
@@ -163,8 +156,8 @@ class APK:
         if not self.methods:
             return
 
-        root = Node('root')
-        r = Resolver(pathattr='name')
+        root = Node("root")
+        r = Resolver(pathattr="name")
 
         def find_node(path):
             """查找节点
@@ -192,9 +185,9 @@ class APK:
                 TYPE: Node
             """
             current = root
-            node_path = '/root'
-            for item in mtd.split('/'):
-                node_path = node_path + '/' + item
+            node_path = "/root"
+            for item in mtd.split("/"):
+                node_path = node_path + "/" + item
                 tnode = find_node(node_path)
                 if tnode:
                     current = tnode
@@ -210,7 +203,7 @@ class APK:
             to_nodes(mtd)
 
         def serialize_node(root_node):
-            snum = ''
+            snum = ""
             for pre, _, node in RenderTree(root_node):
                 snum = snum + str(node.height)
             return snum
@@ -218,7 +211,9 @@ class APK:
         self.trees = {}
         for pre, _, node in RenderTree(root):
             if node.height > height:
-                key = hash.hash(serialize_node(node), 'md5')
+                h = hashlib.md5()
+                h.update(serialize_node(node), "md5")
+                key = h.hexdigest()
                 if key in self.trees:
                     self.trees[key].append(node)
                 else:
@@ -280,7 +275,7 @@ class APK:
                 for method in dexClass.data.methods:
                     clsname = method.id.cname.decode()
                     mtdname = method.id.name.decode()
-                    methods.add(clsname + '/' + mtdname)
+                    methods.add(clsname + "/" + mtdname)
         self.methods = sorted(methods)
 
     def _init_strings_refx(self):
@@ -367,7 +362,7 @@ class APK:
                         method_id = dex_file.method_id(bc.args[0])
                         mtd_name = method_id.name
                         mtd_cname = method_id.cname
-                        dexstr = mtd_cname + b'->' + mtd_name
+                        dexstr = mtd_cname + b"->" + mtd_name
                         if clsname in self.methods_refx:
                             if mtdname in self.methods_refx[clsname]:
                                 self.methods_refx[clsname][mtdname].add(dexstr)
@@ -387,17 +382,19 @@ class APK:
     def _init_dex_files(self):
         self.dex_files = []
         try:
-            with apkfile.ZipFile(self.apk_path, 'r') as z:
+            with apkfile.ZipFile(self.apk_path, "r") as z:
                 for name in z.namelist():
                     data = z.read(name)
-                    if name.startswith('classes') and name.endswith('.dex') \
-                            and Magic(data).get_type() == 'dex':
+                    if (
+                        name.startswith("classes")
+                        and name.endswith(".dex")
+                        and pyftype.guess(data).EXTENSION == "dex"
+                    ):
                         dex_file = DexFile(data)
                         self.dex_files.append(dex_file)
         except Exception as e:
             print(self.apk_path)
             print(e)
-
 
     def get_strings(self):
         if not self.strings:
@@ -436,7 +433,7 @@ class APK:
                 for name in zf.namelist():
                     try:
                         data = zf.read(name)
-                        mine = Magic(data).get_type()
+                        mine = pyftype.guess(data).MIME
                         info = zf.getinfo(name)
                     except Exception as ex:
                         print(name, ex)
@@ -446,14 +443,13 @@ class APK:
                     item["type"] = mine
                     item["time"] = "%d%02d%02d%02d%02d%02d" % info.date_time
                     crc = str(hex(info.CRC)).upper()[2:]
-                    crc = '0' * (8 - len(crc)) + crc
+                    crc = "0" * (8 - len(crc)) + crc
                     item["crc"] = crc
                     # item["sha1"] = ""
                     self.children.append(item)
         except Exception as e:
             print(self.apk_path)
             print(e)
-
 
     def get_org_manifest(self):
         if not self.org_manifest:
@@ -469,7 +465,8 @@ class APK:
                     try:
                         self.axml = AXMLPrinter(data).get_xml_obj()
                         buff = etree.tostring(
-                            self.axml, pretty_print=True, encoding="utf-8")
+                            self.axml, pretty_print=True, encoding="utf-8"
+                        )
                         self.org_manifest = buff.decode("UTF-8")
 
                     except Exception as e:
@@ -478,17 +475,18 @@ class APK:
             print(self.apk_path)
             print(e)
 
-
         # fix manifest
         self.org_manifest = re.sub(
-            r'\s:(="[\w]*?\.[\.\w]*")', r' android:name\1', self.org_manifest)
+            r'\s:(="[\w]*?\.[\.\w]*")', r" android:name\1", self.org_manifest
+        )
 
     def get_main_activities(self):
         x = set()
         y = set()
 
-        activities_and_aliases = self.axml.findall(".//activity") + \
-            self.axml.findall(".//activity-alias")
+        activities_and_aliases = self.axml.findall(".//activity") + self.axml.findall(
+            ".//activity-alias"
+        )
 
         for item in activities_and_aliases:
             # Some applications have more than one MAIN activity.
@@ -504,7 +502,7 @@ class APK:
                     if activity is not None:
                         x.add(item.get(self._ns("name")))
                     else:
-                        print('Main activity without name')
+                        print("Main activity without name")
 
             for sitem in item.findall(".//category"):
                 val = sitem.get(self._ns("name"))
@@ -513,7 +511,7 @@ class APK:
                     if activity is not None:
                         y.add(item.get(self._ns("name")))
                     else:
-                        print('Launcher activity without name')
+                        print("Launcher activity without name")
 
         return x.intersection(y)
 
@@ -535,57 +533,54 @@ class APK:
 
         if self.org_manifest:
             try:
-                self.manifest = xmltodict.parse(
-                    self.org_manifest, False)['manifest']
+                self.manifest = xmltodict.parse(self.org_manifest, False)["manifest"]
             except xml.parsers.expat.ExpatError as e:
                 raise e
             except Exception as e:
                 raise e
 
     def get_manifest_tag_numbers(self):
-        """统计清单标签的个数
-        """
+        """统计清单标签的个数"""
         if not self.org_manifest:
             self._init_org_manifest()
         if self.org_manifest is None:
-            print(self.apk_path, '无法解析清单')
+            print(self.apk_path, "无法解析清单")
             return
 
-        tag_reg = r'<([\w\-\:]+)\s'
+        tag_reg = r"<([\w\-\:]+)\s"
         tag_reg = r'<([\w\-\:]+)\s[^>]*?:name="([^"]*?)"'
         tag_ptn = re.compile(tag_reg)
         result = {
-            'uses-permission': 0,
-            'activity': 0,
-            'receiver': 0,
-            'service': 0,
-            'provider': 0,
-            'version_code': 0,
+            "uses-permission": 0,
+            "activity": 0,
+            "receiver": 0,
+            "service": 0,
+            "provider": 0,
+            "version_code": 0,
         }
 
         perms = set()
         for item in tag_ptn.finditer(self.org_manifest):
             name, value = item.groups()
-            if name == 'uses-permission':
-                if value.startswith('android.permission'):
+            if name == "uses-permission":
+                if value.startswith("android.permission"):
                     perms.add(value)
-            elif 'activity' in name and name != 'activity-alias':
-                result['activity'] += 1
-            elif 'receiver' in name:
-                result['receiver'] += 1
-            elif 'service' in name:
-                result['service'] += 1
-            elif 'provider' in name:
-                result['provider'] += 1
+            elif "activity" in name and name != "activity-alias":
+                result["activity"] += 1
+            elif "receiver" in name:
+                result["receiver"] += 1
+            elif "service" in name:
+                result["service"] += 1
+            elif "provider" in name:
+                result["provider"] += 1
 
-        result['uses-permission'] = len(perms)
+        result["uses-permission"] = len(perms)
 
-        ptn = re.compile(
-            r'android:versionCode="(\d+?)"')
+        ptn = re.compile(r'android:versionCode="(\d+?)"')
         for item in ptn.finditer(self.org_manifest):
             value = item.groups()[0]
             if value.isdigit():
-                result['version_code'] = int(value)
+                result["version_code"] = int(value)
 
         api = 4
         target_sdk_ptn = re.compile(r'android:targetSdkVersion="(\d+?)"')
@@ -601,14 +596,14 @@ class APK:
         if api <= 3:
             #  If both your minSdkVersion and targetSdkVersion values are set to 3 or lower,
             # the system implicitly grants your app these permissions
-            if 'android.permission.READ_PHONE_STATE' in self.org_manifest:
-                result['uses-permission'] += 1
-            if 'android.permission.WRITE_EXTERNAL_STORAGE' in self.org_manifest:
-                result['uses-permission'] += 1
+            if "android.permission.READ_PHONE_STATE" in self.org_manifest:
+                result["uses-permission"] += 1
+            if "android.permission.WRITE_EXTERNAL_STORAGE" in self.org_manifest:
+                result["uses-permission"] += 1
         return result
 
     def _init_arsc(self):
-        ARSC_NAME = 'resources.arsc'
+        ARSC_NAME = "resources.arsc"
         try:
             with apkfile.ZipFile(self.apk_path, mode="r") as zf:
                 if ARSC_NAME in zf.namelist():
@@ -618,29 +613,29 @@ class APK:
             print(self.apk_path)
             print(e)
 
-
     def get_arsc(self):
         if not self.arsc:
             self._init_arsc()
 
         return self.arsc
 
-    def get_certs(self, digestalgo='md5'):
-        if digestalgo not in self.certs:
-            self._init_certs(digestalgo)
-        return self.certs[digestalgo]
+    def get_certs(self, _hash="md5"):
+        if _hash not in self.certs:
+            self._init_certs(_hash)
+        return self.certs[_hash]
 
-    def _init_certs(self, digestalgo):
+    def _init_certs(self, _hash):
         try:
             with apkfile.ZipFile(self.apk_path, mode="r") as zf:
                 for name in zf.namelist():
-                    if name.startswith('META-INF/') and name.endswith(('.DSA', '.RSA')):
+                    if name.startswith("META-INF/") and name.endswith((".DSA", ".RSA")):
                         data = zf.read(name)
-                        mine = Magic(data).get_type()
-                        if mine != 'txt':
+                        kind = pyftype.guess(data)
+                        mine = kind.EXTENSION
+                        if mine != "txt":
                             from apkutils.cert import Certificate
-                            cert = Certificate(data, digestalgo=digestalgo)
-                            self.certs[digestalgo] = cert.get()
+                            cert = Certificate(data, _hash=_hash)
+                            self.certs[_hash] = cert.get()
         except Exception as e:
             print(self.apk_path)
             print(e)
@@ -671,25 +666,26 @@ class APK:
                                 opcodes = opcodes + "0" + opcode
 
                     proto = self.get_proto_string(
-                        method.id.return_type, method.id.param_types)
+                        method.id.return_type, method.id.param_types
+                    )
 
                     item = {}
-                    item['super_class'] = dexClass.super.decode()
-                    item['class_name'] = method.id.cname.decode()
-                    item['method_name'] = method.id.name.decode()
-                    item['method_desc'] = method.id.desc.decode()
-                    item['proto'] = proto
-                    item['opcodes'] = opcodes
+                    item["super_class"] = dexClass.super.decode()
+                    item["class_name"] = method.id.cname.decode()
+                    item["method_name"] = method.id.name.decode()
+                    item["method_desc"] = method.id.desc.decode()
+                    item["proto"] = proto
+                    item["opcodes"] = opcodes
                     self.opcodes.append(item)
 
     @staticmethod
     def get_proto_string(return_type, param_types):
         proto = return_type.decode()
         if len(proto) > 1:
-            proto = 'L'
+            proto = "L"
 
         for item in param_types:
             param_type = item.decode()
-            proto += 'L' if len(param_type) > 1 else param_type
+            proto += "L" if len(param_type) > 1 else param_type
 
         return proto

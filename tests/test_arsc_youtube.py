@@ -3,9 +3,8 @@ import zipfile
 from collections import OrderedDict
 
 import xmltodict
-from apkutils.axml.arscparser import ARSCParser
-
 from apkutils import APK
+from apkutils.axml import ARSCParser
 
 file_path = os.path.abspath(os.path.join(
     os.path.dirname(__file__), "..", 'data', 'youtube.zip'))

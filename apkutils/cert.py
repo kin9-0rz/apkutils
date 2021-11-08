@@ -1,40 +1,28 @@
+import re
 
-from OpenSSL import crypto
-from OpenSSL.crypto import _lib, _ffi, X509
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.serialization import pkcs7
 
 
 class Certificate:
-
-    def __init__(self, buff, digestalgo='md5'):
+    def __init__(self, buff, _hash="md5"):
         self.content = []
-        self._parse(buff, digestalgo)
+        self._parse(buff, _hash)
 
     def get(self):
         return self.content
 
-    def _parse(self, buff, digestalgo):
-        pkcs7 = crypto.load_pkcs7_data(crypto.FILETYPE_ASN1, buff)
+    def _parse(self, buff, _hash):
+        h = hashes.MD5()
+        if _hash == "sha256":
+            h = hashes.SHA256()
+        elif _hash == "sha1":
+            h = hashes.SHA1()
 
-        certs_stack = _ffi.NULL
-        if pkcs7.type_is_signed():
-            certs_stack = pkcs7._pkcs7.d.sign.cert
-        elif pkcs7.type_is_signedAndEnveloped():
-            certs_stack = pkcs7._pkcs7.d.signed_and_enveloped.cert
+        certificates = pkcs7.load_der_pkcs7_certificates(buff)
 
-        pycerts = []
-
-        for i in range(_lib.sk_X509_num(certs_stack)):
-            tmp = _lib.X509_dup(_lib.sk_X509_value(certs_stack, i))
-            pycert = X509._from_raw_x509_ptr(tmp)
-            pycerts.append(pycert)
-
-        if not pycerts:
-            return None
-
-        for cert in pycerts:
-            sbj = cert.get_subject()
-            name = 'C={}, ST={}, L={}, O={}, CN={}'.format(
-                sbj.C, sbj.ST, sbj.L, sbj.O, sbj.CN
-            )
-            checksum = cert.digest(digestalgo).decode().replace(':', '')
-            self.content.append((name, checksum))
+        for item in certificates:
+            name = item.subject.rfc4514_string()
+            name = re.sub(r",(\w{1,2}\=)", r", \1", name).replace("\\", "")
+            fingerprint = item.fingerprint(h).hex()
+            self.content.append((name, fingerprint))

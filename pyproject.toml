@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "apkutils"
+version = "0.11.0"
+description = "一个APK解析库"
+authors = ["kin9-0rz <kin9-0rz@outlook.com>"]
+license = "MIT"
+repository = "https://gitee.com/kin9-0rz/apkutils"
+classifiers = [
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Development Status :: 5 - Production/Stable",
+    "Natural Language :: Chinese (Simplified)"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.7,<3.11"
+click = "^8.0.3"
+anytree = "^2.8.0"
+pyelftools = "^0.27"
+xmltodict = "^0.12.0"
+beautifulsoup4 = "^4.10.0"
+lxml = "^4.6.4"
+pyftype = "^1.2.3"
+Pygments = "^2.10.0"
+cryptography = "^35.0.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+black = "^21.10b0"
+tox = "^3.24.4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+apkutils = "apkutils.cli:main"
