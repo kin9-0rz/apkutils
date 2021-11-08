@@ -6,8 +6,9 @@ import xmltodict
 from apkutils import APK
 from apkutils.axml import ARSCParser
 
-file_path = os.path.abspath(os.path.join(
-    os.path.dirname(__file__), "..", 'data', 'youtube.zip'))
+file_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "fixtures", "youtube.zip")
+)
 
 apk = APK(file_path)
 arsc = apk.get_arsc()
@@ -15,7 +16,8 @@ package = arsc.get_packages_names()[0]
 
 
 def test_get_packages_names():
-    assert package == 'com.google.android.youtube'
+    assert package == "com.google.android.youtube"
+
 
 # def test_get_strings_resources():
 #     print(str(arsc.get_strings_resources()))
@@ -23,13 +25,13 @@ def test_get_packages_names():
 #         arsc.get_strings_resources())['packages']['package']
 #     assert datas['@name'] == 'com.google.android.youtube'
 
-    # strs = datas['locale']['resources']['string']
+# strs = datas['locale']['resources']['string']
 
-    # assert OrderedDict([('@name', 'app_name'), ('#text', 'hellojni')]) in strs
-    # assertIn(OrderedDict(
-    #     [('@name', 'hello_world'), ('#text', 'Hello world!')]), strs)
-    # assertIn(OrderedDict(
-    #     [('@name', 'action_settings'), ('#text', 'Settings')]), strs)
+# assert OrderedDict([('@name', 'app_name'), ('#text', 'hellojni')]) in strs
+# assertIn(OrderedDict(
+#     [('@name', 'hello_world'), ('#text', 'Hello world!')]), strs)
+# assertIn(OrderedDict(
+#     [('@name', 'action_settings'), ('#text', 'Settings')]), strs)
 
 # def test_get_id_resources(self):
 #     datas = xmltodict.parse(
@@ -80,5 +82,3 @@ def test_get_packages_names():
 #         [('@name', 'activity_horizontal_margin'), ('#text', '16.0dip')])
 
 #     assertIn(ahm, datas['resources']['dimen'])
-
-

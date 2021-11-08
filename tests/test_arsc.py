@@ -6,9 +6,7 @@ from collections import OrderedDict
 import xmltodict
 from apkutils.axml import ARSCParser
 
-file_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "data", "test")
-)
+file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "fixtures", "test"))
 with zipfile.ZipFile(file_path, mode="r") as zf:
     data = zf.read("resources.arsc")
     arscobj = ARSCParser(data)

@@ -4,25 +4,45 @@ from apkutils import APK
 
 
 def test_youtube():
-    file_path = os.path.abspath(os.path.join(
-        os.path.dirname(__file__), "..", 'data', 'youtube.zip'))
+    file_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "fixtures", "youtube.zip")
+    )
     apk = APK(file_path)
 
-    certs = [('CN=Unknown, OU=Google, Inc, O=Google, Inc, L=Mountain View, ST=CA, C=US', 'd046fc5d1fc3cd0e57c5444097cd5449')]
+    certs = [
+        (
+            "CN=Unknown, OU=Google, Inc, O=Google, Inc, L=Mountain View, ST=CA, C=US",
+            "d046fc5d1fc3cd0e57c5444097cd5449",
+        )
+    ]
 
     assert certs == apk.get_certs()
 
-    certs = [('CN=Unknown, OU=Google, Inc, O=Google, Inc, L=Mountain View, ST=CA, C=US', '24bb24c05e47e0aefa68a58a766179d9b613a600')]
-    assert certs == apk.get_certs('sha1')
+    certs = [
+        (
+            "CN=Unknown, OU=Google, Inc, O=Google, Inc, L=Mountain View, ST=CA, C=US",
+            "24bb24c05e47e0aefa68a58a766179d9b613a600",
+        )
+    ]
+    assert certs == apk.get_certs("sha1")
 
-    certs = [('CN=Unknown, OU=Google, Inc, O=Google, Inc, L=Mountain View, ST=CA, C=US', '3d7a1223019aa39d9ea0e3436ab7c0896bfb4fb679f4de5fe7c23f326c8f994a')]
-    assert certs == apk.get_certs('sha256')
+    certs = [
+        (
+            "CN=Unknown, OU=Google, Inc, O=Google, Inc, L=Mountain View, ST=CA, C=US",
+            "3d7a1223019aa39d9ea0e3436ab7c0896bfb4fb679f4de5fe7c23f326c8f994a",
+        )
+    ]
+    assert certs == apk.get_certs("sha256")
 
 
 def test_kotlin_app():
-    file_path = os.path.abspath(os.path.join(
-        os.path.dirname(__file__), "..", 'data', 'kotlin-app.zip'))
+    file_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "fixtures", "kotlin-app.zip")
+    )
     apk = APK(file_path)
-    assert [('C=US, O=Android, CN=Android Debug',
-        '299d8de477962c781714eaab76a90c287bb67123cd2909de0f743838cad264e4')] == apk.get_certs('sha256')
-
+    assert [
+        (
+            "C=US, O=Android, CN=Android Debug",
+            "299d8de477962c781714eaab76a90c287bb67123cd2909de0f743838cad264e4",
+        )
+    ] == apk.get_certs("sha256")
