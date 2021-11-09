@@ -10,7 +10,7 @@ A Parser for APK, Dex, ARSC, AXML, ELF.
 #### Installation
 
 ```
-pip install apkutils
+❯ pip install apkutils
 
 ❯ apkutils --help
 Usage: apkutils [OPTIONS] COMMAND [ARGS]...
@@ -27,4 +27,16 @@ Commands:
   strings   打印Dex中的字符串
 ```
 
-Please refer to the `examples` directory for use.
+#### Usage
+
+```python
+from apkutils import APK
+
+apk = APK.from_file(file_path)
+manifest = apk.get_manifest()
+apk.close()
+
+# or 
+with APK.from_file(file_path) as apk:
+    apk.get_manifest()
+```

@@ -4,12 +4,12 @@
 
 #### 介绍
 
-一个用于解析APK、Dex、AXML、ARSC、ELF的解析库。
+一个用于解析APK、Dex、AXML、ARSC、ELF的库。
 
 #### 安装教程
 
 ```
-pip install apkutils
+❯ pip install apkutils
 
 ❯ apkutils --help
 Usage: apkutils [OPTIONS] COMMAND [ARGS]...
@@ -26,8 +26,17 @@ Commands:
   strings   打印Dex中的字符串
 ```
 
+#### 用法
+
+```python
+from apkutils import APK
+
+apk = APK.from_file(file_path)
+manifest = apk.get_manifest()
+apk.close()
+
+# or 
+with APK.from_file(file_path) as apk:
+    apk.get_manifest()
+```
 请参考`examples`目录使用。
-
-
-
-

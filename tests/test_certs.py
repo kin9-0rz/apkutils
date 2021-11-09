@@ -7,7 +7,7 @@ def test_youtube():
     file_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "fixtures", "youtube.zip")
     )
-    apk = APK(file_path)
+    apk = APK.from_file(file_path)
 
     certs = [
         (
@@ -34,15 +34,4 @@ def test_youtube():
     ]
     assert certs == apk.get_certs("sha256")
 
-
-def test_kotlin_app():
-    file_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "fixtures", "kotlin-app.zip")
-    )
-    apk = APK(file_path)
-    assert [
-        (
-            "C=US, O=Android, CN=Android Debug",
-            "299d8de477962c781714eaab76a90c287bb67123cd2909de0f743838cad264e4",
-        )
-    ] == apk.get_certs("sha256")
+    apk.close()

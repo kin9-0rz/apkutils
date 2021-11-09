@@ -5,7 +5,7 @@ from apkutils import APK
 
 file_path = os.path.abspath(os.path.join(
     os.path.dirname(__file__), "..", 'data', 'test'))
-apk = APK(file_path)
+apk = APK.from_file(file_path)
 
 org_strs = apk.get_org_strings()  # the strings from all of classes\d*.dex
 for item in org_strs:

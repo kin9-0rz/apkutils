@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "apkutils"
-version = "0.11.0"
+version = "1.0.0-alpha.0"
 description = "一个APK解析库"
 authors = ["kin9-0rz <kin9-0rz@outlook.com>"]
 license = "MIT"
@@ -11,8 +11,8 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Topic :: Software Development :: Libraries :: Python Modules",
-    "Development Status :: 5 - Production/Stable",
-    "Natural Language :: Chinese (Simplified)"
+    "Natural Language :: Chinese (Simplified)",
+    "Development Status :: 3 - Alpha",
 ]
 
 [tool.poetry.dependencies]

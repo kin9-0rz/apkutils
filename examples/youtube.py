@@ -5,7 +5,7 @@ from apkutils import APK
 file_path = os.path.abspath(os.path.join(
     os.path.dirname(__file__), "..", 'data', 'youtube.zip'))
 
-apk = APK(file_path)
+apk = APK.from_file(file_path)
 
 arsc = apk.get_arsc()
 

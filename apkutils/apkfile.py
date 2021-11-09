@@ -3,7 +3,7 @@ from https://github.com/python/cpython/tree/3.6/Lib/zipfile.py
 
 Read and write APK files.
 
-XXX references to utf-8 need further investigation.
+* 根据实际情况修改。
 """
 import binascii
 import importlib.util

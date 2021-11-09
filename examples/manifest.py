@@ -5,7 +5,7 @@ from apkutils import APK
 
 file_path = os.path.abspath(os.path.join(
     os.path.dirname(__file__), "..", 'data', 'test'))
-apk = APK(file_path)
+apk = APK.from_file(file_path)
 
 m_xml = apk.get_org_manifest()
 print(m_xml)

@@ -1,66 +1,44 @@
 import os
-import unittest
 import zipfile
-from collections import OrderedDict
 
-import xmltodict
 from apkutils.axml import ARSCParser
-
-file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "fixtures", "test"))
-with zipfile.ZipFile(file_path, mode="r") as zf:
-    data = zf.read("resources.arsc")
-    arscobj = ARSCParser(data)
-
-package = arscobj.get_packages_names()[0]
+from bs4 import BeautifulSoup
 
 
-def test_get_packages_names():
-    assert package == "com.example.hellojni"
+class TestARSC(object):
+    def setup_class(self):
+        file_path = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "fixtures", "test")
+        )
 
+        with zipfile.ZipFile(file_path, mode="r") as zf:
+            data = zf.read("resources.arsc")
+            self.arsc = ARSCParser(data)
 
-def test_get_strings_resources():
-    datas = xmltodict.parse(arscobj.get_strings_resources())["packages"]["package"]
-    assert datas["@name"] == "com.example.hellojni"
+        self.package = self.arsc.get_packages_names()[0]
 
-    strs = datas["locale"]["resources"]["string"]
+    def test_get_packages_names(self):
+        assert self.package == "com.example.hellojni"
 
-    assert OrderedDict([("@name", "app_name"), ("#text", "hellojni")]) in strs
-    assert OrderedDict([("@name", "hello_world"), ("#text", "Hello world!")]) in strs
-    assert OrderedDict([("@name", "action_settings"), ("#text", "Settings")]) in strs
+    def test_get_strings_resources(self):
+        str_res = self.arsc.get_strings_resources()
+        soup = BeautifulSoup(str_res, "lxml-xml")
 
+        assert soup.packages.package["name"] == "com.example.hellojni"
+        assert soup.packages.package.get("name") == "com.example.hellojni"
+        assert soup.select_one("package")["name"] == "com.example.hellojni"
 
-def test_get_id_resources():
-    datas = xmltodict.parse(arscobj.get_id_resources(package))
-    assert (
-        OrderedDict([("@type", "id"), ("@name", "action_settings"), ("#text", "false")])
-        == datas["resources"]["item"]
-    )
+        assert soup.select_one('string[name="action_settings"]').string == "Settings"
 
+    def test_get_id_resources(self):
+        res = self.arsc.get_id_resources(self.package)
 
-def test_get_public_resources():
-    datas = xmltodict.parse(arscobj.get_public_resources(package))
+        assert b'name="action_settings">false</item>' in res
 
-    app_name = OrderedDict(
-        [("@type", "string"), ("@name", "app_name"), ("@id", "0x7f050000")]
-    )
+    def test_get_public_resources(self):
+        res = self.arsc.get_public_resources(self.package)
+        assert b'name="ic_launcher" id="0x7f020000" ' in res
 
-    assert app_name in datas["resources"]["public"]
-
-    main = OrderedDict([("@type", "menu"), ("@name", "main"), ("@id", "0x7f070000")])
-    assert main in datas["resources"]["public"]
-
-
-def test_others():
-    datas = xmltodict.parse(arscobj.get_public_resources(package))
-    for item in datas["resources"]["public"]:
-        if "0x7f020000" == item["@id"]:
-            assert item["@type"] == "drawable"
-            assert item["@name"] == "ic_launcher"
-            break
-
-
-def test_get_dimen_resources():
-    datas = xmltodict.parse(arscobj.get_dimen_resources(package))
-    ahm = OrderedDict([("@name", "activity_horizontal_margin"), ("#text", "16.0dip")])
-
-    assert ahm in datas["resources"]["dimen"]
+    def test_get_dimen_resources(self):
+        res = self.arsc.get_dimen_resources(self.package)
+        assert b'name="activity_horizontal_margin">16.0dip</dimen>' in res
