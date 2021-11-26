@@ -6,14 +6,12 @@ import xml
 from xml.parsers.expat import ExpatError
 
 import pyftype
-import xmltodict
-from anytree import Node, RenderTree
-from anytree.resolver import Resolver
 from bs4 import BeautifulSoup
 from lxml import etree
 
 from apkutils import apkfile
 from apkutils.axml import ARSCParser, AXMLPrinter
+from apkutils.cert import Certificate
 from apkutils.dex.dexparser import DexFile
 
 # 6E invoke-virtual 110
@@ -38,12 +36,13 @@ class APK:
         self.dex_files = None
         self.children = None
         self.manifest = None
-        self.dex_strings = None  # 16进制字符串
+        self.dex_strings = None  # 字符串
+        self._dex_hex_strings = None  # 16进制字符串
         self.opcodes = None
         self.certs = {}
         self.arsc = None
         self.strings_refx = None
-        self.app_icon = None
+        self.app_icons = []
         self.methods = None
         self.trees = None  # 代码结构序列字典
         self.application = None
@@ -51,12 +50,18 @@ class APK:
         self.mini_mani = None
         self.classes = None
         self.methods_refx = None
+        self._package_name = None  # 包名
+
+        self._init_manifest()
+        self._init_app_icons()
+        self._init_dex_strings()
+
 
     @classmethod
     def from_file(cls, path):
         cls.apk_path = path
         return cls.from_io(path)
-        
+
     @classmethod
     def from_bytes(cls, _bytes):
         return cls.from_io(io.BytesIO(_bytes))
@@ -75,12 +80,9 @@ class APK:
     def close(self):
         self.afile.close()
 
-    # TODO -------------------------- 解析清单 -------------------------------------- 
-
+    # * -------------------------- 清单 --------------------------------------
 
     def get_manifest(self):
-        if not self.manifest:
-            self._init_manifest()
         return self.manifest
 
     def _init_manifest(self):
@@ -106,52 +108,148 @@ class APK:
             r'\s:(="[\w]*?\.[\.\w]*")', r" android:name\1", self.manifest
         )
 
-    def get_main_activities(self):
-        x = set()
-        y = set()
+        soup = BeautifulSoup(self.manifest, "lxml-xml")
+        self._package_name = soup.manifest["package"]
+        self._version_code = soup.manifest.get("android:versionCode")
+        self._version_name = soup.manifest.get("android:versionName")
 
-        activities_and_aliases = self.axml.findall(".//activity") + self.axml.findall(
-            ".//activity-alias"
+        uses_sdk = soup.select_one("uses-sdk", {})
+        self._min_sdk_version = uses_sdk.get("android:minSdkVersion", 1)
+        self._target_sdk_version = uses_sdk.get("android:targetSdkVersion", -1)
+        self._max_sdk_version = uses_sdk.get("android:maxSdkVersion", 0xFF)
+        self._activities = []
+        self._main_activities = []
+        self._receivers = []
+        self._services = []
+        self._providers = []
+        self._permissions = []
+        self._actions = []
+        self._meta_data = {}
+
+        application_tag = soup.application
+        if application_tag is None:
+            return
+        self._application = application_tag.get("android:name", "")
+        self._application_icon_addr = (
+            application_tag.get("android:icon", "").lower().replace("@", "0x")
         )
+        self._activities_icon_addrs = []
 
-        for item in activities_and_aliases:
-            # Some applications have more than one MAIN activity.
-            # For example: paid and free content
-            activityEnabled = item.get(self._ns("enabled"))
-            if activityEnabled == "false":
-                continue
+        def find_activities(tag):
+            for item in soup.select(tag):
+                name = item["android:name"]
+                if name.startswith("."):
+                    name = self._package_name + name
 
-            for sitem in item.findall(".//action"):
-                val = sitem.get(self._ns("name"))
-                if val == "android.intent.action.MAIN":
-                    activity = item.get(self._ns("name"))
-                    if activity is not None:
-                        x.add(item.get(self._ns("name")))
-                    else:
-                        print("Main activity without name")
+                self._activities.append(name)
 
-            for sitem in item.findall(".//category"):
-                val = sitem.get(self._ns("name"))
-                if val == "android.intent.category.LAUNCHER":
-                    activity = item.get(self._ns("name"))
-                    if activity is not None:
-                        y.add(item.get(self._ns("name")))
-                    else:
-                        print("Launcher activity without name")
+                enabled = item.get("android:enabled", True)
+                if enabled is False:
+                    continue
 
-        return x.intersection(y)
+                content = item.renderContents().decode("utf-8")
+                if "android.intent.action.MAIN" not in content:
+                    continue
+                if "android.intent.category.LAUNCHER" not in content:
+                    continue
+                self._main_activities.append(name)
+                if addr := item.get("android:icon"):
+                    self._activities_icon_addrs.append(addr.lower().replace("@", "0x"))
 
-    @staticmethod
-    def _ns(name):
-        """
-        return the name including the Android namespace URI
-        """
-        return NS_ANDROID + name
+                ta = item.get("android:targetActivity", None)
+                if ta:
+                    self._main_activities.append(ta)
+
+        find_activities("activity")
+        find_activities("activity-alias")
+
+        for item in soup.select("receiver"):
+            name = item["android:name"]
+            if name.startswith("."):
+                name = self._package_name + name
+            self._receivers.append(name)
+
+        for item in soup.select("service"):
+            name = item["android:name"]
+            if name.startswith("."):
+                name = self._package_name + name
+            self._services.append(name)
+
+        for item in soup.select("provider"):
+            name = item["android:name"]
+            if name.startswith("."):
+                name = self._package_name + name
+            self._providers.append(name)
+
+        for item in soup.select("permission"):
+            name = item["android:name"]
+            if name.startswith("."):
+                name = package + name
+            self._permissions.append(name)
+
+        for item in soup.select("action"):
+            name = item["android:name"]
+            if name.startswith("."):
+                name = package + name
+            self._actions.append(name)
+
+        for item in soup.select("meta-data"):
+            name = item.get("android:name", "")
+            value = item.get("android:value", "")
+            if name.startswith("."):
+                name = package + name
+            self._meta_data[name] = value
+
+    def get_package_name(self):
+        return self._package_name
+
+    def get_manifest_activities(self):
+        return self._activities
+
+    def get_manifest_activities_num(self):
+        return len(self._activities)
+
+    def get_manifest_services(self):
+        return self._services
+
+    def get_manifest_services_num(self):
+        return len(self._services)
+
+    def get_manifest_receivers(self):
+        return self._receivers
+
+    def get_manifest_receivers_num(self):
+        return len(self._receivers)
+
+    def get_manifest_providers(self):
+        return self._providers
+
+    def get_manifest_providers_num(self):
+        return len(self._providers)
+
+    def get_manifest_permissions(self):
+        return self._permissions
+
+    def get_manifest_permissions_num(self):
+        return len(self._permissions)
+
+    def get_manifest_actions(self):
+        return self._actions
+
+    def get_manifest_actions_num(self):
+        return len(self._actions)
+
+    def get_manifest_meta_data(self):
+        return self._meta_data
+
+    def get_manifest_main_activities(self):
+        return self._main_activities
+
+    def get_manifest_application(self):
+        return self._application
 
     def get_manifest_tag_numbers(self):
         """统计清单标签的个数"""
-        if not self.manifest:
-            self._init_manifest()
         if self.manifest is None:
             print(self.apk_path, "无法解析清单")
             return
@@ -210,39 +308,10 @@ class APK:
             if "android.permission.WRITE_EXTERNAL_STORAGE" in self.manifest:
                 result["uses-permission"] += 1
         return result
-    # TODO 需要优化
-    def get_main_activity(self):
-        if not self.main_activity:
-            self._init_main_activity()
-        return self.main_activity
 
-    def _init_main_activity(self):
-        # TODO 使用BS解析清单信息，原始清单，清单信息
-        mani = self.get_mini_mani()
-        ptn = r'<activity(.*?)android:name="([^"]*?)"[^<>]*?>.*?<action android:name="android.intent.action.MAIN">.*?</activity>'
-        result = re.search(ptn, mani)
-        if result:
-            self.main_activity = result.groups()[1]
+    # * -------------------------- DEX --------------------------------------
 
-    def get_application(self):
-        if not self.application:
-            self._init_application()
-        return self.application
-
-    def _init_application(self):
-        mani = self.get_mini_mani()
-        if not mani:
-            return
-        ptn = r'<application[^<>]*?:name="([^<>"]*?)"[^<>]*?>'
-        result = re.search(ptn, mani)
-        if result:
-            self.application = result.groups()[0]
-
-   
-
-
-    # TODO DEX解析
-    def get_classes(self):
+    def get_dex_classes(self):
         if self.classes is None:
             self._init_classes()
         return self.classes
@@ -257,23 +326,21 @@ class APK:
                 classes.add(dexClass.name)
         self.classes = sorted(classes)
 
-    def get_methods(self, limit=10000):
+    def get_dex_methods(self):
         """获取所有方法路径 com/a/b/mtd_name
 
         Returns:
             TYPE: set
         """
         if self.methods is None:
-            self._init_methods(limit)
+            self._init_methods()
         return self.methods
 
-    def _init_methods(self, limit=10000):
+    def _init_dex_methods(self):
         """初始化方法
 
-        某些APK可能存在大量的方法，可能会相当耗时，根据情况加限制
-
-        Args:
-            limit (int, optional): 方法数量限制，超过该值，则不获取方法
+        如果类和方法超过1W的时候，速度非常慢。
+        TODO 也许需要C/C++或者Rust等方式生成so，给Python调用，才能提升这个性能。
 
         Returns:
             TYPE: 方法集合
@@ -281,27 +348,25 @@ class APK:
         methods = set()
         if not self.dex_files:
             self._init_dex_files()
-
-        count = 0
+        
+        def process_dex_class(dexClass):
+            try:
+                dexClass.parseData()
+            except IndexError as e:
+                print(e)
+                return
+            for method in dexClass.data.methods:
+                clsname = method.id.cname.decode()
+                mtdname = method.id.name.decode()
+                methods.add(clsname + "/" + mtdname)
+        
         for dex_file in self.dex_files:
-            count += dex_file.method_ids.size
-        if limit < count:
-            return
+            for dex_class in dex_file.classes:
+                process_dex_class(dex_class)
 
-        for dex_file in self.dex_files:
-            for dexClass in dex_file.classes:
-                try:
-                    dexClass.parseData()
-                except IndexError:
-                    continue
 
-                for method in dexClass.data.methods:
-                    clsname = method.id.cname.decode()
-                    mtdname = method.id.name.decode()
-                    methods.add(clsname + "/" + mtdname)
-        self.methods = sorted(methods)
-
-    def _init_strings_refx(self):
+    def _init_dex_strings_refx(self):
+        # TODO 开启线程池
         if not self.dex_files:
             self._init_dex_files()
 
@@ -340,17 +405,17 @@ class APK:
                             self.strings_refx[clsname][mtdname] = set()
                             self.strings_refx[clsname][mtdname].add(dexstr)
 
-    def get_strings_refx(self):
+    def get_dex_strings_refx(self):
         """获取字符串索引，即字符串被那些类、方法使用了。
 
         :return: 字符串索引
         :rtype: [dict]
         """
         if self.strings_refx is None:
-            self._init_strings_refx()
+            self._init_dex_strings_refx()
         return self.strings_refx
 
-    def get_methods_refx(self):
+    def get_dex_methods_refx(self):
         """获取方法索引，即方法被那些类、方法使用了。
 
         :return: 方法索引
@@ -360,7 +425,7 @@ class APK:
             self._init_methods_refx()
         return self.methods_refx
 
-    def _init_methods_refx(self):
+    def _init_dex_methods_refx(self):
         if not self.dex_files:
             self._init_dex_files()
 
@@ -405,22 +470,20 @@ class APK:
     def _init_dex_files(self):
         self.dex_files = []
         try:
-                for name in self.afile.namelist():
-                    data = self.afile.read(name)
-                    if (
-                        name.startswith("classes")
-                        and name.endswith(".dex")
-                        and pyftype.guess(data).EXTENSION == "dex"
-                    ):
-                        dex_file = DexFile(data)
-                        self.dex_files.append(dex_file)
+            for name in self.afile.namelist():
+                data = self.afile.read(name)
+                if (
+                    name.startswith("classes")
+                    and name.endswith(".dex")
+                    and pyftype.guess(data).EXTENSION == "dex"
+                ):
+                    dex_file = DexFile(data)
+                    self.dex_files.append(dex_file)
         except Exception as e:
             print(self.apk_path)
             print(e)
 
     def get_dex_strings(self):
-        if not self.dex_strings:
-            self._init_dex_strings()
         return self.dex_strings
 
     def _init_dex_strings(self):
@@ -428,14 +491,72 @@ class APK:
             self._init_dex_files()
 
         str_set = set()
+        hex_str_set = set()
         for dex_file in self.dex_files:
             for i in range(dex_file.string_ids.size):
                 ostr = dex_file.string(i)
-                str_set.add(binascii.hexlify(ostr).decode())
+                str_set.add(ostr)
+                hex_str_set.add(binascii.hexlify(ostr).decode())
 
         self.dex_strings = list(str_set)
+        self._dex_hex_strings = list(hex_str_set)
 
-    def get_files(self):
+    def get_dex_hex_strings(self):
+        return self._dex_hex_strings
+
+    def get_dex_opcodes(self):
+        if not self.opcodes:
+            self._init_dex_opcodes()
+        return self.opcodes
+
+    def _init_dex_opcodes(self):
+        if not self.dex_files:
+            self._init_dex_files()
+        self.opcodes = []
+        for dex_file in self.dex_files:
+            for dexClass in dex_file.classes:
+                try:
+                    dexClass.parseData()
+                except IndexError:
+                    continue
+                for method in dexClass.data.methods:
+                    opcodes = ""
+                    if method.code:
+                        for bc in method.code.bytecode:
+                            opcode = str(hex(bc.opcode)).upper()[2:]
+                            if len(opcode) == 2:
+                                opcodes = opcodes + opcode
+                            else:
+                                opcodes = opcodes + "0" + opcode
+
+                    proto = self.convert_proto_string(
+                        method.id.return_type, method.id.param_types
+                    )
+
+                    item = {}
+                    item["super_class"] = dexClass.super.decode()
+                    item["class_name"] = method.id.cname.decode()
+                    item["method_name"] = method.id.name.decode()
+                    item["method_desc"] = method.id.desc.decode()
+                    item["proto"] = proto
+                    item["opcodes"] = opcodes
+                    self.opcodes.append(item)
+
+    @staticmethod
+    def convert_proto_string(return_type, param_types):
+        proto = return_type.decode()
+        if len(proto) > 1:
+            proto = "L"
+
+        for item in param_types:
+            param_type = item.decode()
+            proto += "L" if len(param_type) > 1 else param_type
+
+        return proto
+
+    # * -------------------------- 子文件 --------------------------------------
+
+    def get_subfiles(self):
         if not self.children:
             self._init_children()
         return self.children
@@ -464,7 +585,6 @@ class APK:
             print(self.apk_path)
             print(e)
 
-
     def _init_arsc(self):
         ARSC_NAME = "resources.arsc"
         try:
@@ -481,83 +601,40 @@ class APK:
 
         return self.arsc
 
-    def get_opcodes(self):
-        if not self.opcodes:
-            self._init_opcodes()
-        return self.opcodes
+    def get_app_icons(self):
+        if self.app_icons is []:
+            return self.app_icons
+        self._init_app_icons()
+        return self.app_icons
 
-    def _init_opcodes(self):
-        if not self.dex_files:
-            self._init_dex_files()
-        self.opcodes = []
-        for dex_file in self.dex_files:
-            for dexClass in dex_file.classes:
-                try:
-                    dexClass.parseData()
-                except IndexError:
-                    continue
-                for method in dexClass.data.methods:
-                    opcodes = ""
-                    if method.code:
-                        for bc in method.code.bytecode:
-                            opcode = str(hex(bc.opcode)).upper()[2:]
-                            if len(opcode) == 2:
-                                opcodes = opcodes + opcode
-                            else:
-                                opcodes = opcodes + "0" + opcode
+    def _init_app_icons(self):
+        """仅获取Appliction的图标"""
+        files = self.get_subfiles()
 
-                    proto = self.get_proto_string(
-                        method.id.return_type, method.id.param_types
-                    )
+        addr = self._application_icon_addr
+        if addr == "":
+            if self._activities_icon_addrs is []:
+                return
+            addr = self._activities_icon_addrs[0]
 
-                    item = {}
-                    item["super_class"] = dexClass.super.decode()
-                    item["class_name"] = method.id.cname.decode()
-                    item["method_name"] = method.id.name.decode()
-                    item["method_desc"] = method.id.desc.decode()
-                    item["proto"] = proto
-                    item["opcodes"] = opcodes
-                    self.opcodes.append(item)
-
-    @staticmethod
-    def get_proto_string(return_type, param_types):
-        proto = return_type.decode()
-        if len(proto) > 1:
-            proto = "L"
-
-        for item in param_types:
-            param_type = item.decode()
-            proto += "L" if len(param_type) > 1 else param_type
-
-        return proto
-
-
-    def get_app_icon(self):
-        if self.app_icon:
-            return self.app_icon
-        self._init_app_icon()
-        return self.app_icon
-
-    def _init_app_icon(self):
-        files = self.get_files()
-        result = re.search(r':icon="@(.*?)"', self.get_manifest())
-        ids = "0x" + result.groups()[0].lower()
         try:
             data = self.afile.read("resources.arsc")
             self.arscobj = ARSCParser(data)
-            self.package = self.arscobj.get_packages_names()[0]
-            datas = xmltodict.parse(self.arscobj.get_public_resources(self.package))
-            for item in datas["resources"]["public"]:
-                if ids != item["@id"]:
-                    continue
-                for f in files:
-                    name = f["name"]
-                    if item["@type"] in name and item["@name"] in name:
-                        self.app_icon = name
+
+            soup = BeautifulSoup(
+                self.arscobj.get_public_resources(self._package_name), "lxml-xml"
+            )
+            public_tag = soup.select_one('public[id="{}"]'.format(addr))
+
+            icon_name = public_tag.get("name")
+            icon_path = public_tag.get("type")
+            for f in files:
+                name = f["name"]
+                if icon_name in name and icon_path in name:
+                    self.app_icons.append(name)
         except Exception as e:
             print(self.apk_path)
             print(e)
-
 
     def get_certs(self, _hash="md5"):
         if _hash not in self.certs:
@@ -572,8 +649,6 @@ class APK:
                     kind = pyftype.guess(data)
                     mine = kind.EXTENSION
                     if mine != "txt":
-                        from apkutils.cert import Certificate
-
                         cert = Certificate(data, _hash=_hash)
                         self.certs[_hash] = cert.get()
         except Exception as e:

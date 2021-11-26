@@ -12,20 +12,23 @@ class TestAPK(object):
     def teardown_class(self):
         self.apk.close()
 
-    def test_get_manifest(self):
-        assert "com.example" in self.apk.get_manifest()
+    def test_manifest(self):
+        assert self.apk.get_package_name() == 'com.example.hellojni'
+        assert self.apk.get_manifest_application() is ''
+        assert len(self.apk.get_manifest_activities()) == 1
+        assert self.apk.get_manifest_main_activities() == ['com.example.hellojni.MainActivity']
 
     def test_get_strings(self):
         assert len(self.apk.get_dex_strings()) == 8594
 
-    def test_get_files(self):
-        for item in self.apk.get_files():
+    def test_get_subfiles(self):
+        for item in self.apk.get_subfiles():
             if item.get("crc") == "FA974826":
                 assert "AndroidManifest.xml" in item.get("name")
                 break
 
-    def test_get_opcodes(self):
-        for item in self.apk.get_opcodes():
+    def test_get_dex_opcodes(self):
+        for item in self.apk.get_dex_opcodes():
             class_name = item.get("class_name")
             method_name = item.get("method_name")
             opcodes = item.get("opcodes")
@@ -38,5 +41,5 @@ class TestAPK(object):
                 break
 
     def test_get_app_icon(self):
-        path = self.apk.get_app_icon()
-        assert path == "res/drawable-xxhdpi-v4/ic_launcher.png"
+        icons = self.apk.get_app_icons()
+        assert "res/drawable-xxhdpi-v4/ic_launcher.png" in icons

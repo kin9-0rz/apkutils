@@ -9,8 +9,9 @@ install: clean ## 安装包
 	@poetry run apkutils --help
 
 test: install ## 跑测试
-	poetry run pytest -s --ignore=setup.py
-
+	poetry run pytest --benchmark-skip --ignore=setup.py
+benchmark: ## 基准测试
+	poetry run pytest tests/test_benchmark.py
 tox: ## tox
 	poetry run tox
 

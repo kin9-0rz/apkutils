@@ -17,11 +17,11 @@ class TestZipFakePWD(object):
         assert "xml" in self.apk.get_manifest()
 
     def test_get_strings(self):
-        assert "7265737020726573756c74206572726f72202564" in self.apk.get_dex_strings()
+        assert b'writeLong' in self.apk.get_dex_strings()
 
-    def test_get_files(self):
-        assert len(self.apk.get_files()) == 30
+    def test_get_subfiles(self):
+        assert len(self.apk.get_subfiles()) == 30
 
-    def test_get_opcodes(self):
-        assert self.apk.get_opcodes() != None
-        assert len(self.apk.get_opcodes()) == 940
+    def test_get_dex_opcodes(self):
+        assert self.apk.get_dex_opcodes() != None
+        assert len(self.apk.get_dex_opcodes()) == 940
