@@ -1,5 +1,3 @@
-# from __future__ import absolute_import
-
-from .apk import *  # noqa
+from apkutils.apk import *
 
 __version__ = "1.0.1"

@@ -43,3 +43,6 @@ class TestAPK(object):
     def test_get_app_icon(self):
         icons = self.apk.get_app_icons()
         assert "res/drawable-xxhdpi-v4/ic_launcher.png" in icons
+
+    def test_app_name(self):
+        assert self.apk.app_name == 'hellojni'

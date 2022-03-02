@@ -14,7 +14,6 @@ benchmark: ## 基准测试
 	poetry run pytest tests/test_benchmark.py
 tox: ## tox
 	poetry run tox
-
 build: ## build
 	rm -rf dist
 	poetry build -f wheel

@@ -36,26 +36,24 @@ class APK:
         self.dex_files = None
         self.children = None
         self.manifest = None
-        self.dex_strings = None  # 字符串
+        self._dex_strings = None  # 字符串
         self._dex_hex_strings = None  # 16进制字符串
         self.opcodes = None
         self.certs = {}
         self.arsc = None
         self.strings_refx = None
-        self.app_icons = []
-        self.methods = None
+        self._app_icons = []
+        self._methods = None
         self.trees = None  # 代码结构序列字典
-        self.application = None
-        self.main_activity = None
-        self.mini_mani = None
-        self.classes = None
-        self.methods_refx = None
+        self._classes = None
+        self._methods_refx = None
         self._package_name = None  # 包名
+        self._app_name = None
 
         self._init_manifest()
+        self._init_arsc()
         self._init_app_icons()
         self._init_dex_strings()
-
 
     @classmethod
     def from_file(cls, path):
@@ -133,6 +131,10 @@ class APK:
         self._application_icon_addr = (
             application_tag.get("android:icon", "").lower().replace("@", "0x")
         )
+        self._application_label_id = (
+            application_tag.get("android:label").lower().replace("@", "0x")
+        )
+
         self._activities_icon_addrs = []
 
         def find_activities(tag):
@@ -184,21 +186,25 @@ class APK:
         for item in soup.select("permission"):
             name = item["android:name"]
             if name.startswith("."):
-                name = package + name
+                name = self._package_name + name
             self._permissions.append(name)
 
         for item in soup.select("action"):
             name = item["android:name"]
             if name.startswith("."):
-                name = package + name
+                name = self._package_name + name
             self._actions.append(name)
 
         for item in soup.select("meta-data"):
             name = item.get("android:name", "")
             value = item.get("android:value", "")
             if name.startswith("."):
-                name = package + name
+                name = self._package_name + name
             self._meta_data[name] = value
+
+    @property
+    def package_name(self):
+        return self._package_name
 
     def get_package_name(self):
         return self._package_name
@@ -312,9 +318,9 @@ class APK:
     # * -------------------------- DEX --------------------------------------
 
     def get_dex_classes(self):
-        if self.classes is None:
+        if self._classes is None:
             self._init_classes()
-        return self.classes
+        return self._classes
 
     def _init_classes(self):
         classes = set()
@@ -324,7 +330,7 @@ class APK:
         for dex_file in self.dex_files:
             for dexClass in dex_file.classes:
                 classes.add(dexClass.name)
-        self.classes = sorted(classes)
+        self._classes = sorted(classes)
 
     def get_dex_methods(self):
         """获取所有方法路径 com/a/b/mtd_name
@@ -332,9 +338,9 @@ class APK:
         Returns:
             TYPE: set
         """
-        if self.methods is None:
+        if self._methods is None:
             self._init_methods()
-        return self.methods
+        return self._methods
 
     def _init_dex_methods(self):
         """初始化方法
@@ -348,7 +354,7 @@ class APK:
         methods = set()
         if not self.dex_files:
             self._init_dex_files()
-        
+
         def process_dex_class(dexClass):
             try:
                 dexClass.parseData()
@@ -359,11 +365,10 @@ class APK:
                 clsname = method.id.cname.decode()
                 mtdname = method.id.name.decode()
                 methods.add(clsname + "/" + mtdname)
-        
+
         for dex_file in self.dex_files:
             for dex_class in dex_file.classes:
                 process_dex_class(dex_class)
-
 
     def _init_dex_strings_refx(self):
         # TODO 开启线程池
@@ -421,15 +426,15 @@ class APK:
         :return: 方法索引
         :rtype: [dict]
         """
-        if self.methods_refx is None:
+        if self._methods_refx is None:
             self._init_methods_refx()
-        return self.methods_refx
+        return self._methods_refx
 
     def _init_dex_methods_refx(self):
         if not self.dex_files:
             self._init_dex_files()
 
-        self.methods_refx = {}
+        self._methods_refx = {}
         for dex_file in self.dex_files:
             for dexClass in dex_file.classes:
                 try:
@@ -451,16 +456,16 @@ class APK:
                         mtd_name = method_id.name
                         mtd_cname = method_id.cname
                         dexstr = mtd_cname + b"->" + mtd_name
-                        if clsname in self.methods_refx:
-                            if mtdname in self.methods_refx[clsname]:
-                                self.methods_refx[clsname][mtdname].add(dexstr)
+                        if clsname in self._methods_refx:
+                            if mtdname in self._methods_refx[clsname]:
+                                self._methods_refx[clsname][mtdname].add(dexstr)
                             else:
-                                self.methods_refx[clsname][mtdname] = set()
-                                self.methods_refx[clsname][mtdname].add(dexstr)
+                                self._methods_refx[clsname][mtdname] = set()
+                                self._methods_refx[clsname][mtdname].add(dexstr)
                         else:
-                            self.methods_refx[clsname] = {}
-                            self.methods_refx[clsname][mtdname] = set()
-                            self.methods_refx[clsname][mtdname].add(dexstr)
+                            self._methods_refx[clsname] = {}
+                            self._methods_refx[clsname][mtdname] = set()
+                            self._methods_refx[clsname][mtdname].add(dexstr)
 
     def get_dex_files(self):
         if not self.dex_files:
@@ -484,7 +489,7 @@ class APK:
             print(e)
 
     def get_dex_strings(self):
-        return self.dex_strings
+        return self._dex_strings
 
     def _init_dex_strings(self):
         if not self.dex_files:
@@ -498,7 +503,7 @@ class APK:
                 str_set.add(ostr)
                 hex_str_set.add(binascii.hexlify(ostr).decode())
 
-        self.dex_strings = list(str_set)
+        self._dex_strings = list(str_set)
         self._dex_hex_strings = list(hex_str_set)
 
     def get_dex_hex_strings(self):
@@ -602,13 +607,16 @@ class APK:
         return self.arsc
 
     def get_app_icons(self):
-        if self.app_icons is []:
-            return self.app_icons
+        if self._app_icons is []:
+            return self._app_icons
         self._init_app_icons()
-        return self.app_icons
+        return self._app_icons
 
     def _init_app_icons(self):
         """仅获取Appliction的图标"""
+        if self.arsc is None:
+            return
+
         files = self.get_subfiles()
 
         addr = self._application_icon_addr
@@ -618,11 +626,8 @@ class APK:
             addr = self._activities_icon_addrs[0]
 
         try:
-            data = self.afile.read("resources.arsc")
-            self.arscobj = ARSCParser(data)
-
             soup = BeautifulSoup(
-                self.arscobj.get_public_resources(self._package_name), "lxml-xml"
+                self.arsc.get_public_resources(self._package_name), "lxml-xml"
             )
             public_tag = soup.select_one('public[id="{}"]'.format(addr))
 
@@ -631,7 +636,32 @@ class APK:
             for f in files:
                 name = f["name"]
                 if icon_name in name and icon_path in name:
-                    self.app_icons.append(name)
+                    self._app_icons.append(name)
+
+            public_tag = soup.select_one(
+                'public[id="{}"]'.format(self._application_label_id)
+            )
+            self._string_res_app_name = public_tag.get("name")
+        except Exception as e:
+            print(self.apk_path)
+            print(e)
+
+    @property
+    def app_name(self):
+        if self._app_name is None:
+            self._init_app_name()
+        return self._app_name
+
+    def _init_app_name(self):
+        if self.arsc is None:
+            return
+        try:
+            soup = BeautifulSoup(
+                self.arsc.get_string_resources(self._package_name), "lxml-xml"
+            )
+            tag = soup.select_one('string[name="{}"]'.format(self._string_res_app_name))
+            self._app_name = tag.text
+
         except Exception as e:
             print(self.apk_path)
             print(e)

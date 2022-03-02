@@ -16,14 +16,15 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.11"
+python = ">=3.7"
 click = "^8.0.3"
 pyelftools = "^0.27"
 beautifulsoup4 = "^4.10.0"
 lxml = "^4.6.4"
-pyftype = "^1.2.3"
 Pygments = "^2.10.0"
 cryptography = "^35.0.0"
+lief = "^0.11.5"
+pyftype = "^1.2.4"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
