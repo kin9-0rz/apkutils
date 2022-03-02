@@ -13,6 +13,7 @@ class TestAPK(object):
         self.apk.close()
 
     def test_manifest(self):
+        assert '".MainActivity"' in self.apk.get_manifest()
         assert self.apk.get_package_name() == 'com.example.hellojni'
         assert self.apk.get_manifest_application() is ''
         assert len(self.apk.get_manifest_activities()) == 1
