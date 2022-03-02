@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "apkutils"
-version = "1.0.2"
+version = "1.0.3"
 description = "一个APK解析库"
 authors = ["kin9-0rz <kin9-0rz@outlook.com>"]
 license = "MIT"

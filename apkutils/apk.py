@@ -2,6 +2,7 @@ import binascii
 import hashlib
 import io
 import re
+import traceback
 import xml
 from xml.parsers.expat import ExpatError
 
@@ -95,11 +96,12 @@ class APK:
                     )
                     self.manifest = buff.decode("UTF-8")
 
-                except Exception as e:
-                    raise e
-        except Exception as e:
-            print(self.apk_path)
-            print(e)
+                except:
+                    traceback.print_exc()
+                    return
+        except:
+            traceback.print_exc()
+            return
 
         # fix manifest
         self.manifest = re.sub(
@@ -586,9 +588,8 @@ class APK:
                 item["crc"] = crc
                 # item["sha1"] = ""
                 self.children.append(item)
-        except Exception as e:
-            print(self.apk_path)
-            print(e)
+        except:
+            traceback.print_exc()
 
     def _init_arsc(self):
         ARSC_NAME = "resources.arsc"
