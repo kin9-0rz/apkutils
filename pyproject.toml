@@ -1,39 +1,39 @@
 [tool.poetry]
-name = "apkutils"
-version = "1.0.3"
-description = "一个APK解析库"
 authors = ["kin9-0rz <kin9-0rz@outlook.com>"]
-license = "MIT"
-repository = "https://gitee.com/kin9-0rz/apkutils"
 classifiers = [
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-    "Natural Language :: Chinese (Simplified)",
-    "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Natural Language :: Chinese (Simplified)",
+  "Development Status :: 3 - Alpha",
 ]
+description = "一个APK解析库"
+license = "MIT"
+name = "apkutils"
+repository = "https://gitee.com/kin9-0rz/apkutils"
+version = "1.0.4"
 
 [tool.poetry.dependencies]
-python = ">=3.7"
-click = "^8.0.3"
-pyelftools = "^0.27"
-beautifulsoup4 = "^4.10.0"
-lxml = "^4.6.4"
 Pygments = "^2.10.0"
+beautifulsoup4 = "^4.10.0"
+click = "^8.0.3"
 cryptography = "^35.0.0"
 lief = "^0.11.5"
+lxml = "^4.6.4"
+pyelftools = "^0.27"
 pyftype = "^1.2.4"
+python = ">=3.8"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
-tox = "^3.24.4"
 pytest-benchmark = "^3.4.1"
+tox = "^3.24.4"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0"]
 
 [tool.poetry.scripts]
 apkutils = "apkutils.cli:main"

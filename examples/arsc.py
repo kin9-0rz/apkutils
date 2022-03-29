@@ -1,24 +1,21 @@
 import os
-import unittest
 import zipfile
 from collections import OrderedDict
 
 import xmltodict
 from apkutils import APK
-from apkutils.axml.arscparser import ARSCParser
 
 file_path = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "data", "test")
 )
 apk = APK.from_file(file_path)
-package = apk.get_manifest().get("@package", None)
-if not package:
-    exit()
 icon_id = apk.get_manifest().get("application", {}).get("@android:icon", None)
 if not icon_id:
     exit()
 icon_id = icon_id[1:].lower()
-datas = xmltodict.parse(apk.get_arsc().get_public_resources(package))
+
+# ! 不再使用xmltodict处理XML，而是使用 BeautifulSoup
+datas = xmltodict.parse(apk.get_arsc().get_public_resources(apk.package_name))
 
 
 def get_icon_path():
