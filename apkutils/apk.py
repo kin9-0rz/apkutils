@@ -348,6 +348,7 @@ class APK:
         """初始化方法
 
         如果类和方法超过1W的时候，速度非常慢。
+        TODO 等待优化。
         TODO 也许需要C/C++或者Rust等方式生成so，给Python调用，才能提升这个性能。
 
         Returns:
@@ -564,6 +565,11 @@ class APK:
     # * -------------------------- 子文件 --------------------------------------
 
     def get_subfiles(self):
+        """获取子文件
+
+        :return: 子文件列表
+        :rtype: _type_
+        """
         if not self.children:
             self._init_children()
         return self.children
