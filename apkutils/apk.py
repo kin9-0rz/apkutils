@@ -628,7 +628,7 @@ class APK:
 
         addr = self._application_icon_addr
         if addr == "":
-            if self._activities_icon_addrs is []:
+            if self._activities_icon_addrs == []:
                 return
             addr = self._activities_icon_addrs[0]
 

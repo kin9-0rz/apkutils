@@ -20,13 +20,13 @@ def main():
 @click.argument("path")
 def manifest(path):
     """打印清单"""
-    apk = APK(path)
+    apk = APK.from_file(path)
 
     sys.stdout.write(
-        highlight(apk.get_org_manifest(), get_lexer_by_name("xml"), TerminalFormatter())
+        highlight(apk.get_manifest(), get_lexer_by_name("xml"), TerminalFormatter())
     )
 
-    apk.get_main_activities()
+    print(apk.get_manifest_main_activities())
 
 
 @main.command()
@@ -39,10 +39,14 @@ def manifest(path):
 )
 def arsc(path, res_type):
     """打印arsc"""
-    apk = APK(path)
+    apk = APK.from_file(path)
     arsc = apk.get_arsc()
 
-    package = list(arsc.packages.keys())[0]
+    keys = arsc.packages.keys()
+    if len(keys) == 0:
+        return
+
+    package = list(keys)[0]
 
     data = ""
 
@@ -62,7 +66,8 @@ def arsc(path, res_type):
         data = arsc.get_public_resources(package)
     elif res_type == "strings":
         data = arsc.get_strings_resources()
-
+    else:
+        data = arsc.get_string_resources(package)
     sys.stdout.write(highlight(data, get_lexer_by_name("xml"), TerminalFormatter()))
 
 
@@ -70,18 +75,18 @@ def arsc(path, res_type):
 @click.argument("path")
 def strings(path):
     """打印Dex中的字符串"""
-    apk = APK(path)
-    s = sorted(apk.get_strings())
+    apk = APK.from_file(path)
+    s = sorted(apk.get_dex_strings())
     for item in s:
-        print(binascii.unhexlify(item).decode(errors="ignore"))
+        print(item)
 
 
 @main.command()
 @click.argument("path")
 def files(path):
     """打印文件"""
-    apk = APK(path)
-    for item in apk.get_files():
+    apk = APK.from_file(path)
+    for item in apk.get_subfiles():
         print(item)
 
 
@@ -89,10 +94,10 @@ def files(path):
 @click.argument("path")
 def certs(path):
     """打印证书"""
-    apk = APK(path)
+    apk = APK.from_file(path)
     for item in apk.get_certs():
         print(item)
 
 
 if __name__ == "__main__":
-    sys.exit(main())  # pragma: no cover
+    sys.exit(main())
