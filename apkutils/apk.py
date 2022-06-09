@@ -168,37 +168,61 @@ class APK:
         find_activities("activity-alias")
 
         for item in soup.select("receiver"):
-            name = item["android:name"]
+            name = item.get("android:name", "")
+            if name == "":
+                print(item)
+                print("没有android:name，解析异常！")
+                continue
             if name.startswith("."):
                 name = self._package_name + name
             self._receivers.append(name)
 
         for item in soup.select("service"):
-            name = item["android:name"]
+            name = item.get("android:name", "")
+            if name == "":
+                print(item)
+                print("没有android:name，解析异常！")
+                continue
             if name.startswith("."):
                 name = self._package_name + name
             self._services.append(name)
 
         for item in soup.select("provider"):
-            name = item["android:name"]
+            name = item.get("android:name", "")
+            if name == "":
+                print(item)
+                print("没有android:name，解析异常！")
+                continue
             if name.startswith("."):
                 name = self._package_name + name
             self._providers.append(name)
 
         for item in soup.select("permission"):
-            name = item["android:name"]
+            name = item.get("android:name", "")
+            if name == "":
+                print(item)
+                print("没有android:name，解析异常！")
+                continue
             if name.startswith("."):
                 name = self._package_name + name
             self._permissions.append(name)
 
         for item in soup.select("action"):
-            name = item["android:name"]
+            name = item.get("android:name", "")
+            if name == "":
+                print(item)
+                print("没有android:name，解析异常！")
+                continue
             if name.startswith("."):
                 name = self._package_name + name
             self._actions.append(name)
 
         for item in soup.select("meta-data"):
             name = item.get("android:name", "")
+            if name == "":
+                print(item)
+                print("没有android:name，解析异常！")
+                continue
             value = item.get("android:value", "")
             if name.startswith("."):
                 name = self._package_name + name
