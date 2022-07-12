@@ -113,7 +113,9 @@ class APK:
         self._version_code = soup.manifest.get("android:versionCode")
         self._version_name = soup.manifest.get("android:versionName")
 
-        uses_sdk = soup.select_one("uses-sdk", {})
+        uses_sdk = soup.select_one("uses-sdk")
+        if uses_sdk is None:
+            uses_sdk = {}
         self._min_sdk_version = uses_sdk.get("android:minSdkVersion", 1)
         self._target_sdk_version = uses_sdk.get("android:targetSdkVersion", -1)
         self._max_sdk_version = uses_sdk.get("android:maxSdkVersion", 0xFF)
