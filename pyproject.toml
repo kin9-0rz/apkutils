@@ -1,7 +1,6 @@
 [tool.poetry]
 authors = ["kin9-0rz <kin9-0rz@outlook.com>"]
 classifiers = [
-  "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
@@ -26,11 +25,11 @@ pyftype = "^1.2.4"
 python = ">=3.8"
 
 [tool.poetry.dev-dependencies]
+black = {version = "^22.3.0", allow-prereleases = true}
 poetry2setup = "^1.0.0"
 pytest = "^6.2.5"
 pytest-benchmark = "^3.4.1"
 tox = "^3.24.4"
-black = {version = "^22.3.0", allow-prereleases = true}
 
 [build-system]
 build-backend = "poetry.core.masonry.api"

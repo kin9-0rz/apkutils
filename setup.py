@@ -28,7 +28,7 @@ entry_points = \
 
 setup_kwargs = {
     'name': 'apkutils',
-    'version': '1.0.5',
+    'version': '1.0.7',
     'description': '一个APK解析库',
     'long_description': None,
     'author': 'kin9-0rz',
