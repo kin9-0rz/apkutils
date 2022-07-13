@@ -13,6 +13,7 @@ from lxml import etree
 from apkutils import apkfile
 from apkutils.axml import ARSCParser, AXMLPrinter
 from apkutils.cert import Certificate
+from apkutils.dex.dalvik import OPCODES
 from apkutils.dex.dexparser import DexFile
 
 # 6E invoke-virtual 110
@@ -398,6 +399,88 @@ class APK:
         for dex_file in self.dex_files:
             for dex_class in dex_file.classes:
                 process_dex_class(dex_class)
+
+    def get_dex_method_strings(self, mtd):
+        """获取某个方法中的所有字符串
+
+        Args:
+            cname (str): _description_
+            mname (str): _description_
+        """
+        arr = mtd.split("->")
+        cname = arr[0].encode("utf-8")
+        arr = arr[1].split("(")
+        mname = arr[0].encode("utf-8")
+        desc = ("(" + arr[1]).encode("utf-8")
+        print(cname, mname, desc)
+
+        if not self.dex_files:
+            self._init_dex_files()
+
+        strings = set()
+        for dex_file in self.dex_files:
+            for dexClass in dex_file.classes:
+                if dexClass.name == cname:
+                    try:
+                        dexClass.parseData()
+                    except IndexError:
+                        continue
+                    for method in dexClass.data.methods:
+                        if method.id.name != mname:
+                            continue
+                        if desc != method.id.desc:
+                            continue
+                        if not method.code:
+                            continue
+
+                        for bc in method.code.bytecode:
+                            if bc.opcode not in {26, 27}:
+                                continue
+                            strings.add(dex_file.string(bc.args[1]).decode("utf-8"))
+                    break
+        return strings
+
+    def xref(self, mtd: str):
+        """获取所有的引用方法 pkg/cls->mtd()
+
+        Args:
+            mtd (str): _description_
+        """
+        mtd = mtd.encode("utf-8")
+
+        if not self.dex_files:
+            self._init_dex_files()
+
+        mtds = set()
+        for dex_file in self.dex_files:
+            for dexClass in dex_file.classes:
+                try:
+                    dexClass.parseData()
+                except IndexError:
+                    continue
+
+                for method in dexClass.data.methods:
+                    if not method.code:
+                        continue
+
+                    for bc in method.code.bytecode:
+                        if bc.opcode not in INVOKE_OPCODES:
+                            continue
+
+                        method_id = dex_file.method_id(bc.args[0])
+                        dexstr = (
+                            method_id.cname + b"->" + method_id.name + method_id.desc
+                        )
+
+                        if mtd == dexstr:
+                            m = (
+                                method.id.cname
+                                + b"->"
+                                + method.id.name
+                                + method.id.desc
+                            )
+                            mtds.add(m)
+        return mtds
 
     def _init_dex_strings_refx(self):
         # TODO 开启线程池

@@ -99,5 +99,41 @@ def certs(path):
         print(item)
 
 
+@main.command()
+@click.argument("path")
+@click.option(
+    "-m",
+    "--method",
+    help="指定方法，如 top/cls->mtd(Landroid/app/Application;Ljava/lang/String;Ljava/lang/String;)V",
+)
+def mtds(path, method):
+    """获取指定方法中的所有字符串"""
+    apk = APK.from_file(path)
+    strs = apk.get_method_strings(method)
+    if strs is None:
+        return
+
+    for item in strs:
+        print(item)
+
+
+@main.command()
+@click.argument("path")
+@click.option(
+    "-m",
+    "--method",
+    help="指定方法，如 top/cls->mtd(Landroid/app/Application;Ljava/lang/String;Ljava/lang/String;)V",
+)
+def xref(path, method):
+    """获取方法的引用方法"""
+    apk = APK.from_file(path)
+    strs = apk.xref(method)
+    if strs is None:
+        return
+
+    for item in strs:
+        print(item)
+
+
 if __name__ == "__main__":
     sys.exit(main())
