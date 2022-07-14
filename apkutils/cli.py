@@ -109,7 +109,7 @@ def certs(path):
 def mtds(path, method):
     """获取指定方法中的所有字符串"""
     apk = APK.from_file(path)
-    strs = apk.get_method_strings(method)
+    strs = apk.get_dex_method_strings(method)
     if strs is None:
         return
 

@@ -368,7 +368,7 @@ class APK:
             TYPE: set
         """
         if self._methods is None:
-            self._init_methods()
+            self._init_dex_methods()
         return self._methods
 
     def _init_dex_methods(self):
@@ -412,7 +412,6 @@ class APK:
         arr = arr[1].split("(")
         mname = arr[0].encode("utf-8")
         desc = ("(" + arr[1]).encode("utf-8")
-        print(cname, mname, desc)
 
         if not self.dex_files:
             self._init_dex_files()
