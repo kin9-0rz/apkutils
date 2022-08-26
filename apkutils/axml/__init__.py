@@ -471,6 +471,7 @@ class AXMLParser:
 
         # Not that severe of an error, we have plenty files where this is not
         # set correctly
+        # FIXME 异常
         if axml_header.type != RES_XML_TYPE:
             self.axml_tampered = True
             log.warning(
@@ -2493,17 +2494,14 @@ class ARSCResType:
         return self.parent.get_package_name()
 
     def __repr__(self):
-        return (
-            "<ARSCResType(start=0x%x, id=0x%x, flags=0x%x, entryCount=%d, entriesStart=0x%x, mResId=0x%x, %s)>"
-            % (
-                self.start,
-                self.id,
-                self.flags,
-                self.entryCount,
-                self.entriesStart,
-                self.mResId,
-                "table:" + self.parent.mTableStrings.getString(self.id - 1),
-            )
+        return "<ARSCResType(start=0x%x, id=0x%x, flags=0x%x, entryCount=%d, entriesStart=0x%x, mResId=0x%x, %s)>" % (
+            self.start,
+            self.id,
+            self.flags,
+            self.entryCount,
+            self.entriesStart,
+            self.mResId,
+            "table:" + self.parent.mTableStrings.getString(self.id - 1),
         )
 
 

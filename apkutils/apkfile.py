@@ -761,6 +761,8 @@ class ZipExtFile(io.BufferedIOBase):
         self._compress_left = zipinfo.compress_size
         self._left = zipinfo.file_size
 
+        if self._compress_type not in {ZIP_STORED, ZIP_DEFLATED, ZIP_BZIP2, ZIP_LZMA}:
+            self._compress_type = ZIP_STORED
         self._decompressor = _get_decompressor(self._compress_type)
 
         self._eof = False
@@ -893,7 +895,7 @@ class ZipExtFile(io.BufferedIOBase):
             return
         self._running_crc = crc32(newdata, self._running_crc) & 0xFFFFFFFF
         # Check the CRC if we're at the end of the file
-        # 因为Android并不验证CRC
+        # NOTE Android并不验证CRC
         # 部分APK把CRC抹掉，解析的时候，不验证CRC
         # if self._eof and self._running_crc != self._expected_crc:
         #     raise BadZipFile("Bad CRC-32 for file %r" % self.name)
@@ -1140,7 +1142,7 @@ class ZipFile:
         offset_cd = endrec[_ECD_OFFSET]  # offset of central directory
         self._comment = endrec[_ECD_COMMENT]  # archive comment
 
-        # ---> APK文件只有一个，不可能存在额外数据。
+        # NOTE APK文件只有一个，不可能存在额外数据。
         # "concat" is zero, unless zip was concatenated to another file
         # concat = endrec[_ECD_LOCATION] - size_cd - offset_cd
         # if endrec[_ECD_SIGNATURE] == stringEndArchive64:
@@ -1193,7 +1195,7 @@ class ZipFile:
                 x.file_size,
             ) = centdir[1:12]
 
-            # ! 忽略版本 通过提升版本对抗解压软件
+            # NOTE 忽略版本 通过提升版本对抗解压软件
             # if x.extract_version > MAX_EXTRACT_VERSION:
             #     raise NotImplementedError(
             #         "zip file version %.1f" % (x.extract_version / 10)
@@ -1335,7 +1337,7 @@ class ZipFile:
             if fheader[_FH_SIGNATURE] != stringFileHeader:
                 raise BadZipFile("Bad magic number for file header")
 
-            # 注意：头部的文件长度可能会被修改
+            # NOTE 注意：头部的文件长度可能会被修改
             len_fname = fheader[_FH_FILENAME_LENGTH]
             if len_fname > 256:
                 # 自动修正文件名长度，但是，不能保证解压成功
@@ -1348,12 +1350,12 @@ class ZipFile:
 
             # zinfo.flag_bits ^= zinfo.flag_bits % 2
 
-            # ! 添加patched数据flag，对抗
+            # NOTE 添加patched数据flag，对抗
             # if zinfo.flag_bits & 0x20:
             #     # Zip 2.7: compressed patched data
             #     raise NotImplementedError("compressed patched data (flag bit 5)")
 
-            # ! 添加加密flag，对抗
+            # NOTE 添加加密flag，对抗
             # if zinfo.flag_bits & 0x40:
             # # strong encryption
             # raise NotImplementedError("strong encryption (flag bit 6)")

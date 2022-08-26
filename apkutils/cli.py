@@ -6,6 +6,7 @@ import click
 from pygments import highlight
 from pygments.formatters.terminal import TerminalFormatter
 from pygments.lexers import get_lexer_by_name
+from apkutils import apkfile
 
 from apkutils import APK, __version__
 
@@ -14,6 +15,14 @@ from apkutils import APK, __version__
 @click.version_option(__version__)
 def main():
     pass
+
+
+# TODO 增加解压命令
+# @main.command()
+# @click.argument("args")
+# def unzip(args):
+#     """解压文件, help可以看命令"""
+#     apkfile.main(args)
 
 
 @main.command()

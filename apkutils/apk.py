@@ -51,6 +51,7 @@ class APK:
         self._methods_refx = None
         self._package_name = None  # 包名
         self._app_name = None
+        self._application_icon_addr = None
 
         self._init_manifest()
         self._init_arsc()
@@ -92,6 +93,8 @@ class APK:
                 data = self.afile.read(ANDROID_MANIFEST)
                 try:
                     self.axml = AXMLPrinter(data).get_xml_obj()
+                    if self.axml is None:
+                        return
                     buff = etree.tostring(
                         self.axml, pretty_print=True, encoding="utf-8"
                     )
