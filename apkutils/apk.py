@@ -759,6 +759,8 @@ class APK:
             public_tag = soup.select_one(
                 'public[id="{}"]'.format(self._application_label_id)
             )
+            if public_tag is None:
+                return
             self._string_res_app_name = public_tag.get("name")
         except Exception as e:
             print(self.apk_path)
