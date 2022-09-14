@@ -2,6 +2,7 @@ import os
 
 from apkutils import APK
 
+
 class TestAPK(object):
     def setup_class(self):
         file_path = os.path.abspath(
@@ -14,10 +15,11 @@ class TestAPK(object):
 
     def test_manifest(self):
         assert '".MainActivity"' in self.apk.get_manifest()
-        assert self.apk.get_package_name() == 'com.example.hellojni'
-        assert self.apk.get_manifest_application() is ''
-        assert len(self.apk.get_manifest_activities()) == 1
-        assert self.apk.get_manifest_main_activities() == ['com.example.hellojni.MainActivity']
+        assert self.apk.get_package_name() == "com.example.hellojni"
+        assert self.apk.get_manifest_application() is ""
+        assert self.apk.get_manifest_main_activities() == [
+            "com.example.hellojni.MainActivity"
+        ]
 
     def test_get_strings(self):
         assert len(self.apk.get_dex_strings()) == 8594
@@ -46,4 +48,4 @@ class TestAPK(object):
         assert "res/drawable-xxhdpi-v4/ic_launcher.png" in icons
 
     def test_app_name(self):
-        assert self.apk.app_name == 'hellojni'
+        assert self.apk.app_name == "hellojni"

@@ -123,14 +123,7 @@ class APK:
         self._min_sdk_version = uses_sdk.get("android:minSdkVersion", 1)
         self._target_sdk_version = uses_sdk.get("android:targetSdkVersion", -1)
         self._max_sdk_version = uses_sdk.get("android:maxSdkVersion", 0xFF)
-        self._activities = []
         self._main_activities = []
-        self._receivers = []
-        self._services = []
-        self._providers = []
-        self._permissions = []
-        self._actions = []
-        self._meta_data = {}
 
         application_tag = soup.application
         if application_tag is None:
@@ -150,8 +143,6 @@ class APK:
                 name = item["android:name"]
                 if name.startswith("."):
                     name = self._package_name + name
-
-                self._activities.append(name)
 
                 enabled = item.get("android:enabled", True)
                 if enabled is False:
@@ -173,67 +164,6 @@ class APK:
         find_activities("activity")
         find_activities("activity-alias")
 
-        for item in soup.select("receiver"):
-            name = item.get("android:name", "")
-            if name == "":
-                print(item)
-                print("没有android:name，解析异常！")
-                continue
-            if name.startswith("."):
-                name = self._package_name + name
-            self._receivers.append(name)
-
-        for item in soup.select("service"):
-            name = item.get("android:name", "")
-            if name == "":
-                print(item)
-                print("没有android:name，解析异常！")
-                continue
-            if name.startswith("."):
-                name = self._package_name + name
-            self._services.append(name)
-
-        for item in soup.select("provider"):
-            name = item.get("android:name", "")
-            if name == "":
-                print(item)
-                print("没有android:name，解析异常！")
-                continue
-            if name.startswith("."):
-                name = self._package_name + name
-            self._providers.append(name)
-
-        for item in soup.select("permission"):
-            name = item.get("android:name", "")
-            if name == "":
-                print(item)
-                print("没有android:name，解析异常！")
-                continue
-            if name.startswith("."):
-                name = self._package_name + name
-            self._permissions.append(name)
-
-        for item in soup.select("action"):
-            name = item.get("android:name", "")
-            if name == "":
-                print(item)
-                print("没有android:name，解析异常！")
-                continue
-            if name.startswith("."):
-                name = self._package_name + name
-            self._actions.append(name)
-
-        for item in soup.select("meta-data"):
-            name = item.get("android:name", "")
-            if name == "":
-                print(item)
-                print("没有android:name，解析异常！")
-                continue
-            value = item.get("android:value", "")
-            if name.startswith("."):
-                name = self._package_name + name
-            self._meta_data[name] = value
-
     @property
     def package_name(self):
         return self._package_name
@@ -241,111 +171,11 @@ class APK:
     def get_package_name(self):
         return self._package_name
 
-    def get_manifest_activities(self):
-        return self._activities
-
-    def get_manifest_activities_num(self):
-        return len(self._activities)
-
-    def get_manifest_services(self):
-        return self._services
-
-    def get_manifest_services_num(self):
-        return len(self._services)
-
-    def get_manifest_receivers(self):
-        return self._receivers
-
-    def get_manifest_receivers_num(self):
-        return len(self._receivers)
-
-    def get_manifest_providers(self):
-        return self._providers
-
-    def get_manifest_providers_num(self):
-        return len(self._providers)
-
-    def get_manifest_permissions(self):
-        return self._permissions
-
-    def get_manifest_permissions_num(self):
-        return len(self._permissions)
-
-    def get_manifest_actions(self):
-        return self._actions
-
-    def get_manifest_actions_num(self):
-        return len(self._actions)
-
-    def get_manifest_meta_data(self):
-        return self._meta_data
-
     def get_manifest_main_activities(self):
         return self._main_activities
 
     def get_manifest_application(self):
         return self._application
-
-    def get_manifest_tag_numbers(self):
-        """统计清单标签的个数"""
-        if self.manifest is None:
-            print(self.apk_path, "无法解析清单")
-            return
-
-        tag_reg = r"<([\w\-\:]+)\s"
-        tag_reg = r'<([\w\-\:]+)\s[^>]*?:name="([^"]*?)"'
-        tag_ptn = re.compile(tag_reg)
-        result = {
-            "uses-permission": 0,
-            "activity": 0,
-            "receiver": 0,
-            "service": 0,
-            "provider": 0,
-            "version_code": 0,
-        }
-
-        perms = set()
-        for item in tag_ptn.finditer(self.manifest):
-            name, value = item.groups()
-            if name == "uses-permission":
-                if value.startswith("android.permission"):
-                    perms.add(value)
-            elif "activity" in name and name != "activity-alias":
-                result["activity"] += 1
-            elif "receiver" in name:
-                result["receiver"] += 1
-            elif "service" in name:
-                result["service"] += 1
-            elif "provider" in name:
-                result["provider"] += 1
-
-        result["uses-permission"] = len(perms)
-
-        ptn = re.compile(r'android:versionCode="(\d+?)"')
-        for item in ptn.finditer(self.manifest):
-            value = item.groups()[0]
-            if value.isdigit():
-                result["version_code"] = int(value)
-
-        api = 4
-        target_sdk_ptn = re.compile(r'android:targetSdkVersion="(\d+?)"')
-        match = target_sdk_ptn.search(self.manifest)
-        if match:
-            api = int(match.groups()[0])
-        else:
-            min_sdk_ptn = re.compile(r'android:minSdkVersion="(\d+?)"')
-            match = min_sdk_ptn.search(self.manifest)
-            if match:
-                api = int(match.groups()[0])
-
-        if api <= 3:
-            #  If both your minSdkVersion and targetSdkVersion values are set to 3 or lower,
-            # the system implicitly grants your app these permissions
-            if "android.permission.READ_PHONE_STATE" in self.manifest:
-                result["uses-permission"] += 1
-            if "android.permission.WRITE_EXTERNAL_STORAGE" in self.manifest:
-                result["uses-permission"] += 1
-        return result
 
     # * -------------------------- DEX --------------------------------------
 

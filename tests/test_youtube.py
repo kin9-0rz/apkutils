@@ -12,9 +12,11 @@ class TestZipFakePWD(object):
 
     def teardown_class(self):
         self.apk.close()
-    
+
     def test_manifest(self):
-        assert self.apk.get_package_name() == 'com.google.android.youtube'
-        assert len(self.apk.get_manifest_activities()) == 64
+        assert self.apk.get_package_name() == "com.google.android.youtube"
         assert len(self.apk.get_manifest_main_activities()) == 2
-        assert self.apk.get_manifest_application() == 'com.google.android.apps.youtube.app.YouTubeApplication'
+        assert (
+            self.apk.get_manifest_application()
+            == "com.google.android.apps.youtube.app.YouTubeApplication"
+        )
