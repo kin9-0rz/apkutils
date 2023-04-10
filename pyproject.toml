@@ -12,7 +12,7 @@ description = "一个APK解析库"
 license = "MIT"
 name = "apkutils"
 repository = "https://gitee.com/kin9-0rz/apkutils"
-version = "1.2.2"
+version = "1.2.4"
 
 [tool.poetry.dependencies]
 Pygments = "^2.12.0"

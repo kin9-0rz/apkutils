@@ -92,14 +92,15 @@ class APK:
             if ANDROID_MANIFEST in self.afile.namelist():
                 data = self.afile.read(ANDROID_MANIFEST)
                 try:
-                    self.axml = AXMLPrinter(data).get_xml_obj()
+                    self.axml = AXMLPrinter(data, True).get_xml_obj()
                     if self.axml is None:
                         return
                     buff = etree.tostring(
                         self.axml, pretty_print=True, encoding="utf-8"
                     )
+                    if buff is None:
+                        return
                     self.manifest = buff.decode("UTF-8")
-
                 except:
                     traceback.print_exc()
                     return

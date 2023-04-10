@@ -6,9 +6,8 @@ import click
 from pygments import highlight
 from pygments.formatters.terminal import TerminalFormatter
 from pygments.lexers import get_lexer_by_name
-from apkutils import apkfile
 
-from apkutils import APK, __version__
+from apkutils import APK, __version__, apkfile
 
 
 @click.group()
@@ -30,9 +29,13 @@ def main():
 def manifest(path):
     """打印清单"""
     apk = APK.from_file(path)
+    manifest = apk.get_manifest()
+    if manifest is None:
+        print("Manifest is None!")
+        return
 
     sys.stdout.write(
-        highlight(apk.get_manifest(), get_lexer_by_name("xml"), TerminalFormatter())
+        highlight(manifest, get_lexer_by_name("xml"), TerminalFormatter())
     )
 
     print(apk.get_manifest_main_activities())

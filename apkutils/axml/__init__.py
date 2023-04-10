@@ -9,9 +9,10 @@ from collections import defaultdict
 from struct import pack, unpack
 from xml.sax.saxutils import escape
 
+from lxml import etree
+
 from apkutils.axml import bytecode, public
 from apkutils.axml.types import *
-from lxml import etree
 
 log = logging.getLogger("axml")
 
@@ -103,29 +104,37 @@ class StringBlock:
     See http://androidxref.com/9.0.0_r3/xref/frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h#436
     """
 
-    def __init__(self, buff, header):
+    def __init__(self, buff, header, is_android_manifest=False):
         """
         :param buff: buffer which holds the string block
         :param header: a instance of :class:`~ARSCHeader`
         """
         self._cache = {}
         self.header = header
-        # We already read the header (which was chunk_type and chunk_size
-        # Now, we read the string_count:
-        self.stringCount = unpack("<I", buff.read(4))[0]
-        # style_count
-        self.styleCount = unpack("<I", buff.read(4))[0]
 
-        # flags
+        self.stringCount = unpack("<I", buff.read(4))[0]
+        
+        self.styleCount = 0
+        if is_android_manifest:
+            buff.read(4)
+        else:
+            self.styleCount = unpack("<I", buff.read(4))[0]
+
+        # flags is_utf8
         self.flags = unpack("<I", buff.read(4))[0]
         self.m_isUTF8 = (self.flags & UTF8_FLAG) != 0
 
         # string_pool_offset
         # The string offset is counted from the beginning of the string section
         self.stringsOffset = unpack("<I", buff.read(4))[0]
+        
         # style_pool_offset
         # The styles offset is counted as well from the beginning of the string section
-        self.stylesOffset = unpack("<I", buff.read(4))[0]
+        self.stylesOffset = 0
+        if is_android_manifest:
+            buff.read(4)
+        else:
+            self.stylesOffset = unpack("<I", buff.read(4))[0]
 
         # Check if they supplied a stylesOffset even if the count is 0:
         if self.styleCount == 0 and self.stylesOffset > 0:
@@ -142,14 +151,21 @@ class StringBlock:
         # Next, there is a list of string following.
         # This is only a list of offsets (4 byte each)
         for i in range(self.stringCount):
-            self.m_stringOffsets.append(unpack("<I", buff.read(4))[0])
+            offset = unpack("<I", buff.read(4))[0]
+            self.m_stringOffsets.append(offset)
+            
+            # NOTE 如果offset是0，说明有问题
+            if i > 0 and offset == 0:
+                self.stringCount = i
+                buff.set_idx(buff.get_idx()-4)
+                break
+        
 
         # And a list of styles
         # again, a list of offsets
         for i in range(self.styleCount):
             self.m_styleOffsets.append(unpack("<I", buff.read(4))[0])
 
-        # FIXME it is probably better to parse n strings and not calculate the size
         size = self.header.size - self.stringsOffset
 
         # if there are styles as well, we do not want to read them too.
@@ -170,7 +186,7 @@ class StringBlock:
 
             for i in range(0, size // 4):
                 self.m_styles.append(unpack("<I", buff.read(4))[0])
-
+        
     def __repr__(self):
         return "<StringPool #strings={}, #styles={}, UTF8={}>".format(
             self.stringCount, self.styleCount, self.m_isUTF8
@@ -397,13 +413,13 @@ class AXMLParser:
     See http://androidxref.com/9.0.0_r3/xref/frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h#563
     """
 
-    def __init__(self, raw_buff):
+    def __init__(self, raw_buff, is_android_manifest=False):
         self._reset()
 
         self._valid = True
         self.axml_tampered = False
         self.buff = bytecode.BuffHandle(raw_buff)
-
+        
         # Minimum is a single ARSCHeader, which would be a strange edge case...
         if self.buff.size() < 8:
             log.error(
@@ -471,12 +487,10 @@ class AXMLParser:
 
         # Not that severe of an error, we have plenty files where this is not
         # set correctly
-        # FIXME 异常
         if axml_header.type != RES_XML_TYPE:
             self.axml_tampered = True
             log.warning(
-                "AXML file has an unusual resource type! "
-                "Malware likes to to such stuff to anti androguard! "
+                "AXML有一个不常见的资源类型! "
                 "But we try to parse it anyways. Resource Type: 0x{:04x}".format(
                     axml_header.type
                 )
@@ -499,8 +513,8 @@ class AXMLParser:
             self._valid = False
             return
 
-        self.sb = StringBlock(self.buff, header)
-
+        self.sb = StringBlock(self.buff, header, is_android_manifest)
+        
         # Stores resource ID mappings, if any
         self.m_resourceIDs = []
 
@@ -565,11 +579,9 @@ class AXMLParser:
                 continue
 
             # Parse now the XML chunks.
-            # unknown chunk types might cause problems, but we can skip them!
             if h.type < RES_XML_FIRST_CHUNK_TYPE or h.type > RES_XML_LAST_CHUNK_TYPE:
                 # h.size is the size of the whole chunk including the header.
-                # We read already 8 bytes of the header, thus we need to
-                # subtract them.
+                # We read already 8 bytes of the header, thus we need to subtract them.
                 log.error(
                     "Not a XML resource chunk type: 0x{:04x}. Skipping {} bytes".format(
                         h.type, h.size
@@ -670,7 +682,8 @@ class AXMLParser:
                 (self.m_namespaceUri,) = unpack("<L", self.buff.read(4))
                 # Name of the Tag (String ID)
                 (self.m_name,) = unpack("<L", self.buff.read(4))
-                # FIXME: Flags
+                
+                # NOTE : Flags skip
                 _ = self.buff.read(4)
                 # Attribute Count
                 (attributeCount,) = unpack("<L", self.buff.read(4))
@@ -1007,8 +1020,8 @@ class AXMLPrinter:
     __charrange = None
     __replacement = None
 
-    def __init__(self, raw_buff):
-        self.axml = AXMLParser(raw_buff)
+    def __init__(self, raw_buff, is_android_manifest=False):
+        self.axml = AXMLParser(raw_buff, is_android_manifest)
 
         self.root = None
         self.packerwarning = False
