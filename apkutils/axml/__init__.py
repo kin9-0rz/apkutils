@@ -120,6 +120,7 @@ class StringBlock:
         else:
             self.styleCount = unpack("<I", buff.read(4))[0]
 
+        
         # flags is_utf8
         self.flags = unpack("<I", buff.read(4))[0]
         self.m_isUTF8 = (self.flags & UTF8_FLAG) != 0
@@ -142,24 +143,22 @@ class StringBlock:
                 "Styles Offset given, but styleCount is zero. "
                 "This is not a problem but could indicate packers."
             )
-
+        
         self.m_stringOffsets = []
         self.m_styleOffsets = []
         self.m_charbuff = ""
         self.m_styles = []
 
-        # Next, there is a list of string following.
-        # This is only a list of offsets (4 byte each)
         for i in range(self.stringCount):
             offset = unpack("<I", buff.read(4))[0]
             self.m_stringOffsets.append(offset)
             
-            # NOTE 如果offset是0，说明有问题
-            if i > 0 and offset == 0:
+            # NOTE stringCount 有可能是伪造的
+            # 正常情况下，stringCount + 8，就是buff当前的位置
+            if self.stringsOffset + 8 == buff.get_idx():
                 self.stringCount = i
-                buff.set_idx(buff.get_idx()-4)
+                buff.set_idx(buff.get_idx())
                 break
-        
 
         # And a list of styles
         # again, a list of offsets
@@ -186,6 +185,8 @@ class StringBlock:
 
             for i in range(0, size // 4):
                 self.m_styles.append(unpack("<I", buff.read(4))[0])
+        
+        # self.show()
         
     def __repr__(self):
         return "<StringPool #strings={}, #styles={}, UTF8={}>".format(
@@ -286,9 +287,11 @@ class StringBlock:
             self.m_charbuff[offset + encoded_bytes : offset + encoded_bytes + 2]
             != b"\x00\x00"
         ):
-            raise ResParserError(
-                "UTF-16 String is not null terminated! At offset={}".format(offset)
-            )
+            # raise ResParserError(
+            #     "UTF-16 String is not null terminated! At offset={}".format(offset)
+            # )
+            # NOTE 清单被混淆，暂时使用这个做替换，这种处理方式，不大好
+            return "android"
 
         return self._decode_bytes(data, "utf-16", str_len)
 
@@ -306,9 +309,9 @@ class StringBlock:
         :return: str
         """
         # string = data.decode(encoding, 'replace')
-        # * 直接忽略，避免乱码
+        # NOTE 直接忽略，避免乱码
         string = data.decode(encoding, "ignore")
-        # * 移除日志，没有必要输出
+        # NOTE 移除日志，没有必要输出
         # if len(string) != str_len:
         #     log.warning("invalid decoded string length")
         return string
@@ -485,16 +488,9 @@ class AXMLParser:
                 )
             )
 
-        # Not that severe of an error, we have plenty files where this is not
-        # set correctly
+        # NOTE 判断是否是AXML文件，没啥用
         if axml_header.type != RES_XML_TYPE:
             self.axml_tampered = True
-            log.warning(
-                "AXML有一个不常见的资源类型! "
-                "尝试继续解析. Resource Type: 0x{:04x}".format(
-                    axml_header.type
-                )
-            )
 
         # Now we parse the STRING POOL
         try:
@@ -1724,7 +1720,6 @@ class ARSCParser:
             )
             return [ate.get_value(), ate.key.get_data()]
 
-    # FIXME
     def get_resource_style(self, ate):
         return ["", ""]
 

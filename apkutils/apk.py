@@ -150,14 +150,14 @@ class APK:
             application_tag.get("android:icon", "").lower().replace("@", "0x")
         )
         self._application_label_id = (
-            application_tag.get("android:label").lower().replace("@", "0x")
+            application_tag.get("android:label", "").lower().replace("@", "0x")
         )
 
         self._activities_icon_addrs = []
 
         def find_activities(tag):
             for item in soup.select(tag):
-                name = item["android:name"]
+                name = item.get("android:name", "none")
                 if name.startswith("."):
                     name = self._package_name + name
 
