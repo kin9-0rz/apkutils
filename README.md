@@ -49,4 +49,3 @@ with APK.from_file(file_path) as apk:
 
 从 `1.3.0` 开始，默认不解析清单、不解析图标、不解析Dex，而是按需解析。
 
-
