@@ -17,18 +17,33 @@ def main():
 
 
 # TODO 增加解压命令
-# @main.command()
-# @click.argument("args")
-# def unzip(args):
-#     """解压文件, help可以看命令"""
-#     apkfile.main(args)
-
+@main.command()
+@click.argument("path", type=click.Path(exists=True))
+# @click.option("-l", is_flag=True, help="Show listing of a zipfile")
+@click.option("-t", is_flag=True, help="Test if a zipfile is valid")
+@click.option("-e", is_flag=True, help="Extract zipfile into target dir")
+@click.option("-o", "--output", default="out", help="Output directory")
+def unzip(path, t, e, output):
+    """解压文件，默认显示zip文件"""
+    if e:
+        with apkfile.ZipFile(path, "r") as zf:
+            zf.extractall(output)
+    elif t:
+        with apkfile.ZipFile(path, "r") as zf:
+            badfile = zf.testzip()
+        if badfile:
+            print("The following enclosed file is corrupted: {!r}".format(badfile))
+        print("Done testing")
+    else:
+        with apkfile.ZipFile(path, "r") as zf:
+            zf.printdir()
+    
 
 @main.command()
 @click.argument("path")
 def manifest(path):
     """打印清单"""
-    apk = APK.from_file(path)
+    apk = APK.from_file(path).parse_manifest()
     manifest = apk.get_manifest()
     if manifest is None:
         print("Manifest is None!")

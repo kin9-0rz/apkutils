@@ -53,10 +53,10 @@ class APK:
         self._app_name = None
         self._application_icon_addr = None
 
-        self._init_manifest()
-        self._init_arsc()
-        self._init_app_icons()
-        self._init_dex_strings()
+        # self._init_manifest()
+        # self._init_arsc()
+        # self._init_app_icons()
+        # self._init_dex_strings()
 
     @classmethod
     def from_file(cls, path):
@@ -71,6 +71,22 @@ class APK:
     def from_io(cls, _io):
         cls.afile = apkfile.ZipFile(_io, "r")
         return cls()
+
+    def parse_manifest(self):
+        self._init_manifest()
+        return self
+    
+    def parse_dex(self):
+        self._init_dex_strings()
+        return self
+    
+    def parse_arsc(self):
+        self._init_arsc()
+        return self
+    
+    def parse_app_icons(self):
+        self._init_app_icons()
+        return self
 
     def __enter__(self):
         return self

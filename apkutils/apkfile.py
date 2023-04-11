@@ -1251,6 +1251,10 @@ class ZipFile:
                 # Read by chunks, to avoid an OverflowError or a
                 # MemoryError with very large embedded files.
                 with self.open(zinfo.filename, "r") as f:
+                    name = zinfo.filename.split(os.path.sep)[-1]
+                    if len(name) > 255:
+                        print("存在超过255个字符串的文件名，跳过")
+                        continue
                     while f.read(chunk_size):  # Check CRC-32
                         pass
             except BadZipFile:
@@ -1362,15 +1366,17 @@ class ZipFile:
 
             if zinfo.flag_bits & 0x800:
                 # UTF-8 filename
-                fname_str = fname.decode("utf-8")
+                # NOTE 如果有错误，则忽略
+                fname_str = fname.decode("utf-8", errors="ignore")
             else:
                 fname_str = fname.decode("cp437")
 
-            if fname_str != zinfo.orig_filename:
-                raise BadZipFile(
-                    "File name in directory %r and header %r differ."
-                    % (zinfo.orig_filename, fname)
-                )
+            # TODO 存在编码问题
+            # if fname_str != zinfo.orig_filename:
+            #     raise BadZipFile(
+            #         "File name in directory %r and header %r differ."
+            #         % (zinfo.orig_filename, fname)
+            #     )
 
             return ZipExtFile(zef_file, mode, zinfo, None, True)
         except Exception as ignore:
@@ -1439,9 +1445,22 @@ class ZipFile:
             # filter illegal characters on Windows
             arcname = self._sanitize_windows_name(arcname, os.path.sep)
 
+        # NOTE 文件名超过255无法写入
+        arr = arcname.split(os.path.sep)
+        name = arr[-1]
+        if len(name) > 255:
+            extension = os.path.splitext(name)[1]
+            name = "too_long_" + str(crc32(name.encode("utf-8"))) + extension
+            arr = arr[:-1]
+            print("{} 存在超过255个字符的文件名，跳过解压。".format(os.path.sep.join(arr)))
+            # arr.append(name)
+            # arcname = os.path.sep.join(arr)
+            # FIXME 对于该类文件名暂时无法解压，暂时跳过
+            return
+
         targetpath = os.path.join(targetpath, arcname)
         targetpath = os.path.normpath(targetpath)
-
+        
         # Create all upper directories if necessary.
         upperdirs = os.path.dirname(targetpath)
         if upperdirs and not os.path.exists(upperdirs):

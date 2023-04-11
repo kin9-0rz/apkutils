@@ -491,7 +491,7 @@ class AXMLParser:
             self.axml_tampered = True
             log.warning(
                 "AXML有一个不常见的资源类型! "
-                "But we try to parse it anyways. Resource Type: 0x{:04x}".format(
+                "尝试继续解析. Resource Type: 0x{:04x}".format(
                     axml_header.type
                 )
             )
