@@ -82,12 +82,10 @@ class APK:
     
     def parse_arsc(self):
         self._init_arsc()
+        self._init_app_icons()
+        self._init_app_name()
         return self
     
-    def parse_app_icons(self):
-        self._init_app_icons()
-        return self
-
     def __enter__(self):
         return self
 
