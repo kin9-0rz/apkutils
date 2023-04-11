@@ -102,7 +102,7 @@ def arsc(path, res_type):
 @click.argument("path")
 def strings(path):
     """打印Dex中的字符串"""
-    apk = APK.from_file(path)
+    apk = APK.from_file(path).parse_dex()
     s = sorted(apk.get_dex_strings())
     for item in s:
         print(item)
@@ -135,7 +135,7 @@ def certs(path):
 )
 def mtds(path, method):
     """获取指定方法中的所有字符串"""
-    apk = APK.from_file(path)
+    apk = APK.from_file(path).parse_dex()
     strs = apk.get_dex_method_strings(method)
     if strs is None:
         return
@@ -153,7 +153,7 @@ def mtds(path, method):
 )
 def xref(path, method):
     """获取方法的引用方法"""
-    apk = APK.from_file(path)
+    apk = APK.from_file(path).parse_dex()
     strs = apk.xref(method)
     if strs is None:
         return
