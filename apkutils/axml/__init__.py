@@ -221,7 +221,6 @@ class StringBlock:
         self._cache = {}
         self.header = header
 
-        print("is_android_manifest", is_android_manifest)
 
         self.stringCount = unpack("<I", buff.read(4))[0]
         
@@ -258,7 +257,7 @@ class StringBlock:
         self.m_styleOffsets = []
         self.m_charbuff = ""
         self.m_styles = []
-
+        
         for i in range(self.stringCount):
             offset = unpack("<I", buff.read(4))[0]
             self.m_stringOffsets.append(offset)
@@ -297,6 +296,9 @@ class StringBlock:
             for i in range(0, size // 4):
                 self.m_styles.append(unpack("<I", buff.read(4))[0])
         
+        print("is_android_manifest", is_android_manifest)
+        print("stringCount: {}".format(self.stringCount))
+        print("stringsOffset", self.stringsOffset)
         self.show()
         
     def __repr__(self):
