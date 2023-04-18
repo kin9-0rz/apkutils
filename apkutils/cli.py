@@ -43,7 +43,7 @@ def unzip(path, t, e, output):
 @click.argument("path")
 def manifest(path):
     """打印清单"""
-    apk = APK.from_file(path).parse_manifest()
+    apk = APK.from_file(path).parse_manifest().parse_arsc()
     manifest = apk.get_manifest()
     if manifest is None:
         print("Manifest is None!")
@@ -54,6 +54,7 @@ def manifest(path):
     )
 
     print(apk.get_manifest_main_activities())
+    print(apk.app_name)
 
 
 @main.command()
@@ -66,7 +67,7 @@ def manifest(path):
 )
 def arsc(path, res_type):
     """打印arsc"""
-    apk = APK.from_file(path)
+    apk = APK.from_file(path).parse_arsc()
     arsc = apk.get_arsc()
 
     keys = arsc.packages.keys()

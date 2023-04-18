@@ -221,6 +221,8 @@ class StringBlock:
         self._cache = {}
         self.header = header
 
+        print("is_android_manifest", is_android_manifest)
+
         self.stringCount = unpack("<I", buff.read(4))[0]
         
         self.styleCount = 0
@@ -229,7 +231,6 @@ class StringBlock:
         else:
             self.styleCount = unpack("<I", buff.read(4))[0]
 
-        
         # flags is_utf8
         self.flags = unpack("<I", buff.read(4))[0]
         self.m_isUTF8 = (self.flags & UTF8_FLAG) != 0
@@ -295,6 +296,8 @@ class StringBlock:
 
             for i in range(0, size // 4):
                 self.m_styles.append(unpack("<I", buff.read(4))[0])
+        
+        self.show()
         
     def __repr__(self):
         return "<StringPool #strings={}, #styles={}, UTF8={}>".format(

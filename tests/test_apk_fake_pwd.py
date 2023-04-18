@@ -8,7 +8,7 @@ class TestZipFakePWD(object):
         file_path = os.path.abspath(
             os.path.join(os.path.dirname(__file__), "fixtures", "test_zip_fake_pwd")
         )
-        self.apk = APK.from_file(file_path)
+        self.apk = APK.from_file(file_path).parse_manifest().parse_dex()
 
     def teardown_class(self):
         self.apk.close()
@@ -23,5 +23,5 @@ class TestZipFakePWD(object):
         assert len(self.apk.get_subfiles()) == 30
 
     def test_get_dex_opcodes(self):
-        assert self.apk.get_dex_opcodes() != None
+        assert self.apk.get_dex_opcodes() is not None
         assert len(self.apk.get_dex_opcodes()) == 940

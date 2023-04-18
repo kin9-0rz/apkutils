@@ -550,10 +550,11 @@ class APK:
                 item["crc"] = crc
                 # item["sha1"] = ""
                 self.children.append(item)
-        except:
+        except Exception:
             traceback.print_exc()
 
     def _init_arsc(self):
+        print("init arsc")
         ARSC_NAME = "resources.arsc"
         try:
             if ARSC_NAME in self.afile.namelist():
@@ -577,8 +578,12 @@ class APK:
 
     def _init_app_icons(self):
         """仅获取Appliction的图标"""
+        print("init_app_icon")
         if self.arsc is None:
+            print("self.arsc is None")
             return
+        
+        self._string_res_app_name = ""
 
         files = self.get_subfiles()
 
@@ -618,7 +623,9 @@ class APK:
         return self._app_name
 
     def _init_app_name(self):
+        print("_init app name")
         if self.arsc is None:
+            print("arsc is none")
             return
         try:
             soup = BeautifulSoup(
