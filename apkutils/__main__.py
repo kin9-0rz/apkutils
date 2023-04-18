@@ -1,4 +1,3 @@
-
 import sys
 from apkutils.cli import main
 
