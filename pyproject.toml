@@ -12,7 +12,8 @@ description = "一个APK解析库"
 license = "MIT"
 name = "apkutils"
 repository = "https://gitee.com/kin9-0rz/apkutils"
-version = "1.4.0"
+version = "1.4.1"
+readme = "README.md"
 
 [tool.poetry.dependencies]
 Pygments = "^2.12.0"

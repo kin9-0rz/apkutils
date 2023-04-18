@@ -12,7 +12,7 @@ A Parser for APK, Dex, ARSC, AXML, ELF.
 ```
 ❯ pip install apkutils
 
-❯ apkutils --help
+❯ apkutils
 Usage: apkutils [OPTIONS] COMMAND [ARGS]...
 
 Options:
@@ -24,7 +24,10 @@ Commands:
   certs     打印证书
   files     打印文件
   manifest  打印清单
+  mtds      获取指定方法中的所有字符串
   strings   打印Dex中的字符串
+  unzip     解压文件，默认显示zip文件
+  xref      获取方法的引用方法
 ```
 
 #### Usage
@@ -32,7 +35,8 @@ Commands:
 ```python
 from apkutils import APK
 
-apk = APK.from_file(file_path)
+# NOTE 按需解析，这里仅仅解析清单，不解析dex、图标。
+apk = APK.from_file(file_path).parse_manifest()
 manifest = apk.get_manifest()
 apk.close()
 
