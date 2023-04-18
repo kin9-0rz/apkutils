@@ -115,10 +115,10 @@ class APK:
                     if buff is None:
                         return
                     self.manifest = buff.decode("UTF-8")
-                except:
+                except Exception:
                     traceback.print_exc()
                     return
-        except:
+        except Exception:
             traceback.print_exc()
             return
 
@@ -128,7 +128,7 @@ class APK:
         )
 
         soup = BeautifulSoup(self.manifest, "lxml-xml")
-        self._package_name = soup.manifest["package"]
+        self._package_name = soup.manifest.get("package", "")
         self._version_code = soup.manifest.get("android:versionCode")
         self._version_name = soup.manifest.get("android:versionName")
 
