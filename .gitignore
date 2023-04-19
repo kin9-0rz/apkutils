@@ -1,6 +1,10 @@
 # OSX
 .DS_Store
 poetry.lock
+out/
+*.arsc
+AndroidManifest.xml
+AndroidManifest-err.xml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

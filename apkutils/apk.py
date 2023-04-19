@@ -53,11 +53,6 @@ class APK:
         self._app_name = None
         self._application_icon_addr = None
 
-        # self._init_manifest()
-        # self._init_arsc()
-        # self._init_app_icons()
-        # self._init_dex_strings()
-
     @classmethod
     def from_file(cls, path):
         cls.apk_path = path
@@ -72,18 +67,15 @@ class APK:
         cls.afile = apkfile.ZipFile(_io, "r")
         return cls()
 
-    def parse_manifest(self):
+    def parse_resouce(self):
         self._init_manifest()
+        self._init_arsc()
+        self._init_app_icons()
+        self._init_app_name()
         return self
     
     def parse_dex(self):
         self._init_dex_strings()
-        return self
-    
-    def parse_arsc(self):
-        self._init_arsc()
-        self._init_app_icons()
-        self._init_app_name()
         return self
     
     def __enter__(self):
@@ -554,12 +546,12 @@ class APK:
             traceback.print_exc()
 
     def _init_arsc(self):
-        print("init arsc")
         ARSC_NAME = "resources.arsc"
         try:
             if ARSC_NAME in self.afile.namelist():
                 data = self.afile.read(ARSC_NAME)
                 self.arsc = ARSCParser(data)
+                self.package = self.arsc.get_packages_names()[0]
         except Exception as e:
             print(self.apk_path)
             print(e)
@@ -578,9 +570,7 @@ class APK:
 
     def _init_app_icons(self):
         """仅获取Appliction的图标"""
-        print("init_app_icon")
         if self.arsc is None:
-            print("self.arsc is None")
             return
         
         self._string_res_app_name = ""
@@ -623,9 +613,7 @@ class APK:
         return self._app_name
 
     def _init_app_name(self):
-        print("_init app name")
         if self.arsc is None:
-            print("arsc is none")
             return
         try:
             soup = BeautifulSoup(

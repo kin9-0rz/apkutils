@@ -220,7 +220,7 @@ class StringBlock:
         """
         self._cache = {}
         self.header = header
-
+        begin_pos = buff.get_idx()
 
         self.stringCount = unpack("<I", buff.read(4))[0]
         
@@ -233,12 +233,12 @@ class StringBlock:
         # flags is_utf8
         self.flags = unpack("<I", buff.read(4))[0]
         self.m_isUTF8 = (self.flags & UTF8_FLAG) != 0
-
+        
+        # stringsStart 字符串数据开始的位置
         # string_pool_offset
         # The string offset is counted from the beginning of the string section
         self.stringsOffset = unpack("<I", buff.read(4))[0]
         
-        # style_pool_offset
         # The styles offset is counted as well from the beginning of the string section
         self.stylesOffset = 0
         if is_android_manifest:
@@ -258,13 +258,16 @@ class StringBlock:
         self.m_charbuff = ""
         self.m_styles = []
         
+        # 字符串池与字符串偏移数组的差，这个是一个固定值
+        N = 6 # NOTE resource.arsc 
+        if is_android_manifest:
+            N = 8 # NOTE AndroidManifest.xml
         for i in range(self.stringCount):
             offset = unpack("<I", buff.read(4))[0]
             self.m_stringOffsets.append(offset)
-            
-            # NOTE stringCount 有可能是伪造的
-            # 正常情况下，stringCount + 8，就是buff当前的位置
-            if self.stringsOffset + 8 == buff.get_idx():
+
+            # 通常情况，不会执行这个，只有 stringCount 伪造一个超大的值才会执行到这里
+            if self.stringsOffset + N == buff.get_idx():
                 self.stringCount = i
                 buff.set_idx(buff.get_idx())
                 break
@@ -275,7 +278,6 @@ class StringBlock:
             self.m_styleOffsets.append(unpack("<I", buff.read(4))[0])
 
         size = self.header.size - self.stringsOffset
-
 
         # if there are styles as well, we do not want to read them too.
         # Only read them, if no
@@ -295,12 +297,7 @@ class StringBlock:
 
             for i in range(0, size // 4):
                 self.m_styles.append(unpack("<I", buff.read(4))[0])
-        
-        print("is_android_manifest", is_android_manifest)
-        print("stringCount: {}".format(self.stringCount))
-        print("stringsOffset", self.stringsOffset)
-        self.show()
-        
+    
     def __repr__(self):
         return "<StringPool #strings={}, #styles={}, UTF8={}>".format(
             self.stringCount, self.styleCount, self.m_isUTF8
@@ -1496,7 +1493,8 @@ class ARSCParser:
         self.buff.set_idx(self.header.start + self.header.header_size)
 
         # Now parse the data:
-        # We should find one ResStringPool_header and one or more ResTable_package chunks inside
+        # We should find one ResStringPool_header 
+        # and one or more ResTable_package chunks inside
         while self.buff.get_idx() <= self.header.end - ARSCHeader.HEADER_SIZE:
             res_header = ARSCHeader(self.buff)
 
@@ -1509,14 +1507,12 @@ class ARSCParser:
                 break
 
             if res_header.type == RES_STRING_POOL_TYPE:
-                # There should be only one StringPool per resource table.
                 if self.stringpool_main:
-                    log.warning(
-                        "Already found a ResStringPool_header, but there should be only one! Will not parse the Pool again."
+                    raise ResParserError(
+                        "There can be only one StringPool per resource table!"
                     )
                 else:
                     self.stringpool_main = StringBlock(self.buff, res_header)
-                    log.debug("Found the main string pool: %s", self.stringpool_main)
 
             elif res_header.type == RES_TABLE_PACKAGE_TYPE:
                 if len(self.packages) > self.packageCount:
@@ -1780,22 +1776,17 @@ class ARSCParser:
         ]
 
     def get_resource_dimen(self, ate):
-        try:
+        data = ate.key.get_data()
+        if len(DIMENSION_UNITS) < (data & COMPLEX_UNIT_MASK):
+            return [ate.get_value(), data]
+        else:
             return [
                 ate.get_value(),
                 "{}{}".format(
-                    complexToFloat(ate.key.get_data()),
-                    DIMENSION_UNITS[ate.key.get_data() & COMPLEX_UNIT_MASK],
+                    complexToFloat(data),
+                    DIMENSION_UNITS[data & COMPLEX_UNIT_MASK],
                 ),
             ]
-        except IndexError:
-            log.debug(
-                "Out of range dimension unit index for {}: {}".format(
-                    complexToFloat(ate.key.get_data()),
-                    ate.key.get_data() & COMPLEX_UNIT_MASK,
-                )
-            )
-            return [ate.get_value(), ate.key.get_data()]
 
     def get_resource_style(self, ate):
         return ["", ""]
