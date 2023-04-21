@@ -48,9 +48,9 @@ def manifest(path):
         print("Manifest is None!")
         return
 
-    sys.stdout.write(
-        highlight(manifest, get_lexer_by_name("xml"), TerminalFormatter())
-    )
+    # sys.stdout.write(
+    #     highlight(manifest, get_lexer_by_name("xml"), TerminalFormatter())
+    # )
 
     print(apk.get_manifest_main_activities())
 
@@ -96,7 +96,8 @@ def arsc(path, res_type):
         data = arsc.get_strings_resources()
     else:
         data = arsc.get_string_resources(package)
-    sys.stdout.write(highlight(data, get_lexer_by_name("xml"), TerminalFormatter()))
+    print(data.decode("utf-8"))
+    # sys.stdout.write(highlight(data, get_lexer_by_name("xml"), TerminalFormatter()))
 
 
 @main.command()

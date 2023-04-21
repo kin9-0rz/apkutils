@@ -68,6 +68,11 @@ class APK:
         return cls()
 
     def parse_resouce(self):
+        """解析资源文件，包括AndroidManifest.xml、resource.arsc，图标、应用名
+
+        Returns:
+            _type_: _description_
+        """
         self._init_manifest()
         self._init_arsc()
         self._init_app_icons()
@@ -557,9 +562,6 @@ class APK:
             print(e)
 
     def get_arsc(self):
-        if not self.arsc:
-            self._init_arsc()
-
         return self.arsc
 
     def get_app_icons(self):
@@ -615,6 +617,7 @@ class APK:
     def _init_app_name(self):
         if self.arsc is None:
             return
+        
         try:
             soup = BeautifulSoup(
                 self.arsc.get_string_resources(self._package_name), "lxml-xml"
