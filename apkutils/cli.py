@@ -1,5 +1,4 @@
 """Console script for apkutils."""
-import binascii
 import sys
 
 import click
@@ -48,11 +47,14 @@ def manifest(path):
         print("Manifest is None!")
         return
 
-    # sys.stdout.write(
-    #     highlight(manifest, get_lexer_by_name("xml"), TerminalFormatter())
-    # )
-
-    print(apk.get_manifest_main_activities())
+    sys.stdout.write(
+        highlight(manifest, get_lexer_by_name("xml"), TerminalFormatter())
+    )
+    
+    print("\nPackage: {}".format(apk.get_package_name()))
+    print("Main Activities:")
+    for item in apk.get_manifest_main_activities():
+        print(" - {}".format(item))
 
 @main.command()
 @click.argument("path")
@@ -96,8 +98,8 @@ def arsc(path, res_type):
         data = arsc.get_strings_resources()
     else:
         data = arsc.get_string_resources(package)
-    print(data.decode("utf-8"))
-    # sys.stdout.write(highlight(data, get_lexer_by_name("xml"), TerminalFormatter()))
+    # print(data.decode("utf-8"))
+    sys.stdout.write(highlight(data, get_lexer_by_name("xml"), TerminalFormatter()))
 
 
 @main.command()

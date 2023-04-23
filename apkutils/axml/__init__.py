@@ -13,13 +13,14 @@ from apkutils.axml import bytecode, public
 
 
 log = logging.getLogger("axml")
-log.setLevel(logging.DEBUG)
-handler = logging.FileHandler("axml.log")
-# handler = logging.StreamHandler()
-handler.setFormatter(
-    logging.Formatter("%(levelname)s[%(name)s][%(lineno)d]: %(message)s")
-)
-log.addHandler(handler)
+log.setLevel(logging.CRITICAL)
+
+# log.setLevel(logging.DEBUG)
+# handler = logging.FileHandler("axml.log")
+# handler.setFormatter(
+#     logging.Formatter("%(levelname)s[%(name)s][%(lineno)d]: %(message)s")
+# )
+# log.addHandler(handler)
 
 # ---------------------------------------------------------------------------- #
 
@@ -153,10 +154,10 @@ def verify_chunk_header_size(ctype: int, header_size: int):
 
         if default_size < header_size:
             n = header_size - default_size
-            log.warn(
+            log.warning(
                 "[Verify] header size {} 大于默认值 {}".format(header_size, default_size)
             )
-            log.warn("[Verify] 头部后面可能存在多余的数据，数量为 {}".format(n))
+            log.warning("[Verify] 头部后面可能存在多余的数据，数量为 {}".format(n))
             return n  # NOTE 需要根据这个值跳过填充数据
     else:
         # TODO 不存在该类型
@@ -177,11 +178,11 @@ class ResChunkHeader:
 
     See http://androidxref.com/9.0.0_r3/xref/frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h#196
     :raises: ResParserError
-    """
+    """  # noqa: E501
 
     HEADER_SIZE = 2 + 2 + 4
 
-    def __init__(self, buff: bytecode.BuffHandle, expected_type=None):
+    def __init__(self, buff: bytecode.BuffHandle, expected_type=None, force=False):
         """
         :param buff: the buffer set to the position where the header starts.
         :param int expected_type: the type of the header which is expected.
@@ -204,11 +205,15 @@ class ResChunkHeader:
         )
 
         if expected_type and self._type != expected_type:
-            raise ResParserError(
-                "目标类型不对: Got 0x{:04x}, wanted 0x{:04x}".format(
-                    self._type, expected_type
+            if force:
+                "[ResChunk] 解析 AndroidManifest 类型不对，直接修复。"
+                self._type = expected_type
+            else:
+                raise ResParserError(
+                    "[ResChunk] 目标类型不对: Got 0x{:04x}, wanted 0x{:04x}".format(
+                        self._type, expected_type
+                    )
                 )
-            )
 
         # chunk size 小于 8，这种情况不可能存在。
         if self._size < self.HEADER_SIZE:
@@ -226,7 +231,7 @@ class ResChunkHeader:
                 )
             )
             raise ResParserError(
-                "declared chunk size ({}) is smaller than header size ({})! Offset={}".format(
+                "declared chunk size ({}) is smaller than header size ({})! Offset={}".format(  # noqa: E501
                     self._size, self._header_size, self.start
                 )
             )
@@ -266,6 +271,7 @@ class ResChunkHeader:
         """
         Get the absolute offset inside the file, where the chunk ends.
         This is equal to `ARSCHeader.start + ARSCHeader.size`.
+        下一个Chunk的开始地址。
         """
         return self.start + self.size
 
@@ -685,7 +691,7 @@ class AXMLParser:
 
         # 解析AXML头，4个字节是类型，4个字节是文件大小
         try:
-            axml_header = ResChunkHeader(self.buff, expected_type=RES_XML_TYPE)
+            axml_header = ResChunkHeader(self.buff, expected_type=RES_XML_TYPE, force=True)  # noqa: E501
         except ResParserError as e:
             log.error("Error parsing first resource header: %s", e)
             self._valid = False
@@ -789,8 +795,8 @@ class AXMLParser:
                 # h.size is the size of the whole chunk including the header.
                 # We read already 8 bytes of the header, thus we need to subtract them.
                 log.error(
-                    "Not a XML resource chunk type: 0x{:04x}. Skipping {} bytes".format(
-                        h.type, h.size
+                    "Not a XML resource chunk type: 0x{:04x}. Skipping {} bytes, end={}".format(  # noqa: E501
+                        h.type, h.size, h.end
                     )
                 )
                 self.buff.set_idx(h.end)
@@ -909,7 +915,7 @@ class AXMLParser:
                 max_n = 5 + skip_n
 
                 if nop_num > 0:
-                    log.warn(
+                    log.warning(
                         "[RES_XML_START_ELEMENT_TYPE] Attribute Chunk，填充{}位".format(
                             nop_num
                         )
@@ -1577,10 +1583,6 @@ class ARSCParser:
         log.info(
             "---------------------------- 解析 resource.arsc 文件 ---------------------------"
         )  # noqa: E501
-        # FIXME 为什么会解析两次？
-        print(
-            "---------------------------- 解析 resource.arsc 文件 ---------------------------"
-        )  # noqa: E501
         self.buff = bytecode.BuffHandle(raw_buff)
 
         if self.buff.size() < 8 or self.buff.size() > 0xFFFFFFFF:
@@ -1653,7 +1655,7 @@ class ARSCParser:
             #     )
             #     break
             if res_header.type == RES_NULL_TYPE:
-                log.warn("[RES_NULL_TYPE] - 跳过{}个填充位".format(res_header.size))
+                log.warning("[RES_NULL_TYPE] - 跳过{}个填充位".format(res_header.size))
                 self.buff.set_idx(
                     self.buff.get_idx() - res_header.header_size + res_header.size
                 )  # noqa: E501
@@ -1672,7 +1674,7 @@ class ARSCParser:
                     )
                 else:
                     self.stringpool_main = ResStringPoolHeader(self.buff, res_header)
-                log.warn("找到一个字符串池 {}".format(self.stringpool_main))
+                log.debug("找到一个字符串池 {}".format(self.stringpool_main))
 
             elif res_header.type == RES_TABLE_PACKAGE_TYPE:
                 if len(self.packages) > self.packageCount:
@@ -1684,7 +1686,7 @@ class ARSCParser:
 
                 current_package = ResTablePackage(self.buff, res_header)
                 package_name = current_package.get_name()
-                log.warn("Parsing package {}".format(package_name))
+                log.debug("Parsing package {}".format(package_name))
                 # After the Header, we have the resource type symbol table
                 self.buff.set_idx(
                     current_package.header.start + current_package.typeStrings
@@ -1761,13 +1763,14 @@ class ARSCParser:
                         )
 
                     elif pkg_chunk_header.type == RES_TABLE_TYPE_TYPE:
-                        a_res_type = ResTableType(self.buff, pc)
+                        a_res_type = ResTableType(pkg_chunk_header, self.buff, pc)
 
                         self.packages[package_name].append(a_res_type)
                         self.resource_configs[package_name][a_res_type].add(
                             a_res_type.config
                         )
 
+                        log.debug("a_res_type.entryCount = {}".format(a_res_type.entryCount))
                         entries = []
                         for i in range(0, a_res_type.entryCount):
                             current_package.mResId = (
@@ -1779,8 +1782,9 @@ class ARSCParser:
                                     current_package.mResId,
                                 )
                             )
-
+                        log.debug("entries num: {}".format(len(entries)))
                         self.packages[package_name].append(entries)
+                        log.debug("idx - {}".format(self.buff.get_idx()))
 
                         for entry, res_id in entries:
                             if self.buff.end():
@@ -1814,7 +1818,7 @@ class ARSCParser:
                     self.buff.set_idx(pkg_chunk_header.end)
             else:
                 # Unknown / not-handled chunk type
-                log.warn("非 RES_STRING_POOL_TYPE 和 RES_TABLE_PACKAGE_TYPE 类型的chunk")
+                log.warning("非 RES_STRING_POOL_TYPE 和 RES_TABLE_PACKAGE_TYPE 类型的chunk")
                 log.warning("Unknown chunk type encountered: %s", res_header)
 
             log.info("move to the next resource chunk: {}".format(res_header.end))
@@ -2119,7 +2123,11 @@ class ARSCParser:
 
         try:
             for i in self.values[package_name][locale]["bool"]:
-                buff += '<bool name="{}">{}</bool>\n'.format(i[0], i[1])
+                if len(i) == 1:
+                    log.warning("[get_bool_resources][bool] item size=1")
+                    buff += '<bool name="{}">{}</bool>\n'.format(i[0], "false")
+                else:
+                    buff += '<bool name="{}">{}</bool>\n'.format(i[0], i[1])
         except KeyError:
             pass
 
@@ -2579,7 +2587,7 @@ class ResTableTypeSpec:
     """ResTable_typeSpec
 
     See http://androidxref.com/9.0.0_r3/xref/frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h#1327
-    """
+    """  # noqa: E501
 
     def __init__(self, buff, parent=None):
         log.info("ResTable_typeSpec")
@@ -2612,7 +2620,7 @@ class ResTableType:
     See http://androidxref.com/9.0.0_r3/xref/frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h#1364
     """
 
-    def __init__(self, buff, parent=None):
+    def __init__(self, chunk_header, buff, parent=None):
         self.start = buff.get_idx()
         self.parent = parent
 
@@ -2635,8 +2643,8 @@ class ResTableType:
             )
         )
         log.info(
-            "   -> [ResTableType] entryCount={}, entriesStart={}, ".format(
-                self.entryCount, self.entriesStart
+            "   -> [ResTableType] entryCount={}, entriesStart={} [资源开始地址], ".format(
+                self.entryCount, chunk_header.start + self.entriesStart
             )
         )
         log.info(" -> ResTableType.chunk_header.start + entriesStart = ResTableEntry的起始位置")  # noqa: E501
@@ -2678,7 +2686,36 @@ class ResTableConfig:
             cls.DEFAULT = ResTableConfig(None)
         return cls.DEFAULT
 
-    def __init__(self, buff=None, **kwargs):
+    def __init__(self, buff:bytecode.BuffHandle=None, **kwargs):
+
+        self.input = (
+            ((kwargs.pop("keyboard", 0) & 0xFF) << 0)
+            + ((kwargs.pop("navigation", 0) & 0xFF) << 8)
+            + ((kwargs.pop("inputFlags", 0) & 0xFF) << 16)
+            + ((kwargs.pop("inputPad0", 0) & 0xFF) << 24)
+        )
+
+        self.screenSize = ((kwargs.pop("screenWidth", 0) & 0xFFFF) << 0) + (
+            (kwargs.pop("screenHeight", 0) & 0xFFFF) << 16
+        )
+
+        self.version = ((kwargs.pop("sdkVersion", 0) & 0xFFFF) << 0) + (
+            (kwargs.pop("minorVersion", 0) & 0xFFFF) << 16
+        )
+
+        self.screenConfig = (
+            ((kwargs.pop("screenLayout", 0) & 0xFF) << 0)
+            + ((kwargs.pop("uiMode", 0) & 0xFF) << 8)
+            + ((kwargs.pop("smallestScreenWidthDp", 0) & 0xFFFF) << 16)
+        )
+
+        self.screenSizeDp = ((kwargs.pop("screenWidthDp", 0) & 0xFFFF) << 0) + (
+            (kwargs.pop("screenHeightDp", 0) & 0xFFFF) << 16
+        )
+
+        self.screenConfig2 = 0
+        self.exceedingSize = 0
+        
         if buff is not None:
             self.start = buff.get_idx()
 
@@ -2690,33 +2727,34 @@ class ResTableConfig:
             # mnc 移动网络代码(来自SIM卡)。0表示“任意”。
             self.imsi = unpack("<I", buff.read(4))[0]
 
-            # uint32_t as chars \0\0 means any
-            # either two 7bit ASCII representing the ISO-639-1 language code
-            # or a single 16bit LE value representing ISO-639-2 3 letter code
+            # char language[2];
+            # char country[2];
             self.locale = unpack("<I", buff.read(4))[0]
 
-            # struct of:
             # uint8_t orientation
             # uint8_t touchscreen
-            # uint8_t density
+            # uint16_t density
             self.screenType = unpack("<I", buff.read(4))[0]
 
-            # struct of
-            # uint8_t keyboard
-            # uint8_t navigation
-            # uint8_t inputFlags
-            # uint8_t inputPad0
-            self.input = unpack("<I", buff.read(4))[0]
+            if self.size > 20:
+                # struct of
+                # uint8_t keyboard
+                # uint8_t navigation
+                # uint8_t inputFlags
+                # uint8_t inputPad0
+                self.input = unpack("<I", buff.read(4))[0]
 
-            # struct of
-            # uint16_t screenWidth
-            # uint16_t screenHeight
-            self.screenSize = unpack("<I", buff.read(4))[0]
-
-            # struct of
-            # uint16_t sdkVersion
-            # uint16_t minorVersion，它应该总是0，因为含义没有定义
-            self.version = unpack("<I", buff.read(4))[0]
+            if self.size > 24:
+                # struct of
+                # uint16_t screenWidth
+                # uint16_t screenHeight
+                self.screenSize = unpack("<I", buff.read(4))[0]
+            
+            if self.size > 28:
+                # struct of
+                # uint16_t sdkVersion
+                # uint16_t minorVersion，它应该总是0，因为含义没有定义
+                self.version = unpack("<I", buff.read(4))[0]
 
             # The next three fields seems to be optional
             if self.size >= 32:
@@ -2725,16 +2763,12 @@ class ResTableConfig:
                 # uint8_t uiMode
                 # uint16_t smallestScreenWidthDp
                 (self.screenConfig,) = unpack("<I", buff.read(4))
-            else:
-                self.screenConfig = 0
 
             if self.size >= 36:
                 # struct of
                 # uint16_t screenWidthDp
                 # uint16_t screenHeightDp
                 (self.screenSizeDp,) = unpack("<I", buff.read(4))
-            else:
-                self.screenSizeDp = 0
 
             if self.size >= 40:
                 # struct of
@@ -2742,8 +2776,6 @@ class ResTableConfig:
                 # uint8_t colorMode
                 # uint16_t screenConfigPad2
                 (self.screenConfig2,) = unpack("<I", buff.read(4))
-            else:
-                self.screenConfig2 = 0
 
             self.exceedingSize = self.size - (buff.tell() - self.start)
             if self.exceedingSize > 0:
@@ -2765,35 +2797,7 @@ class ResTableConfig:
                 + ((kwargs.pop("touchscreen", 0) & 0xFF) << 8)
                 + ((kwargs.pop("density", 0) & 0xFFFF) << 16)
             )
-
-            self.input = (
-                ((kwargs.pop("keyboard", 0) & 0xFF) << 0)
-                + ((kwargs.pop("navigation", 0) & 0xFF) << 8)
-                + ((kwargs.pop("inputFlags", 0) & 0xFF) << 16)
-                + ((kwargs.pop("inputPad0", 0) & 0xFF) << 24)
-            )
-
-            self.screenSize = ((kwargs.pop("screenWidth", 0) & 0xFFFF) << 0) + (
-                (kwargs.pop("screenHeight", 0) & 0xFFFF) << 16
-            )
-
-            self.version = ((kwargs.pop("sdkVersion", 0) & 0xFFFF) << 0) + (
-                (kwargs.pop("minorVersion", 0) & 0xFFFF) << 16
-            )
-
-            self.screenConfig = (
-                ((kwargs.pop("screenLayout", 0) & 0xFF) << 0)
-                + ((kwargs.pop("uiMode", 0) & 0xFF) << 8)
-                + ((kwargs.pop("smallestScreenWidthDp", 0) & 0xFFFF) << 16)
-            )
-
-            self.screenSizeDp = ((kwargs.pop("screenWidthDp", 0) & 0xFFFF) << 0) + (
-                (kwargs.pop("screenHeightDp", 0) & 0xFFFF) << 16
-            )
-
-            # TODO add this some day...
-            self.screenConfig2 = 0
-            self.exceedingSize = 0
+        
         log.info(
             " -> [ResTableType][ResTableConfig] start={},end={},size={},rsize={}".format(  # noqa: E501
                 self.start, buff.get_idx(), self.size, buff.get_idx() - self.start
@@ -3032,29 +3036,31 @@ class ResTableEntry:
         self.parent = parent  # ResTable_ref
         # 0xpptteeee
 
-        # FIXME add chunk end limit ...
-        end = chunk_end
-
         self.size = unpack("<H", buff.read(2))[0]
         self.flags = unpack("<H", buff.read(2))[0]
         self.index = unpack("<I", buff.read(4))[0]  # ResStringPool_ref
 
         log.info(
-            " -> [ResTableEntry] start={},end={},size={},rsize={}".format(
-                self.start, buff.get_idx(), self.size, buff.get_idx() - self.start
+            " -> [ResTableEntry] flags={}, start={},end={},size={},rsize={}".format(
+                self.flags, self.start, buff.get_idx(), self.size, buff.get_idx() - self.start  # noqa: E501
             )
         )
 
-        if self.is_complex():
-            log.info("[ResTableEntry] is_complex")
-            self.tmp = ResTableMapEntry(buff, parent)
-        else:
-            # If FLAG_COMPLEX is not set, a Res_value structure will follow
-            self.key = ResValue(buff, self.parent)
+        # NOTE 注意，强制修复，效果未知
+        if self.size == 0xFFFF:
+            self.size = 8
+            log.info("  -> [ResTableEntry] fix size = 8")
+        
+        # NOTE 注意，强制修复，效果未知
+        if self.flags > 7:
+            self.flags = 0
+            log.info("  -> [ResTableEntry] fix flags = 0")
 
-        # ResTableMapEntry 比 ResTableEntry 多8个字节。
-        # if self.is_weak():
-        #     log.debug("is_weak")
+        if self.is_complex():
+            log.info("  -> [ResTableEntry] is_complex")
+            self.tmp = ResTableMapEntry(chunk_end, buff, parent)
+        else:
+            self.key = ResValue(buff, self.parent)
 
     def get_index(self):
         return self.index
@@ -3099,7 +3105,7 @@ class ResTableMapEntry:
     and http://androidxref.com/9.0.0_r3/xref/frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h#1498 for `ResTable_map`
     """
 
-    def __init__(self, buff, parent=None):
+    def __init__(self, chunk_end, buff, parent=None):
         self.start = buff.get_idx()
         self.parent = parent
 
@@ -3112,6 +3118,10 @@ class ResTableMapEntry:
         # these are structs of ResTable_ref and Res_value
         # ResTable_ref is a uint32_t.
         for i in range(0, self.count):
+            # NOTE 当前位置不能超过chunk大小
+            if buff.tell() + 4 > chunk_end:
+                break
+
             if buff.get_idx() + 4 > buff.size():
                 log.error("Invalid ResTable_map_entry 溢出")
                 raise Exception("Invalid ResTable_map_entry 溢出")
@@ -3158,7 +3168,7 @@ class ResValue:
 
         # NOTE 只能是8，不能是其他值
         if self.size != 8:
-            log.warn(" -> [ResValue] size={}, 不是8，强制赋予8.".format(self.size))
+            log.warning(" -> [ResValue] size={}, 不是8，强制赋予8.".format(self.size))
             self.size = 8
 
         log.info(
