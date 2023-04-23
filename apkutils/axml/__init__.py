@@ -1,5 +1,6 @@
 import binascii
 import collections
+from enum import Enum
 import logging
 import re
 from collections import defaultdict
@@ -10,80 +11,23 @@ from lxml import etree
 
 from apkutils.axml import bytecode, public
 
+
 log = logging.getLogger("axml")
+log.setLevel(logging.CRITICAL)
 
-
-# --------------------------------- AXML格式说明 --------------------------------- #
-
-# 看看这个图 https://cloud.tencent.com/developer/article/1870329
-# 整体分为4大部分
-# magic 4bytes 0x03
-    # chunk type 0x03
-    # header size 0x8=0x4*2
-# 文件大小 4bytes
-
-# String Chunk
-# ResourceID Chunk
-# XmlConContent Chunk
-
-#!SECTION String Chunk
-# magic 4bytes 0x001C0001，
-    # chunk type 0x1
-    # header size 0x1C=4*7
-# chunk size 4bytes
-# StringCount 字符串数量 4bytes，这个值未必是对的。
-# Style数量 4bytes
-# flag 4bytes
-# string pool offset 4bytes，这个值？
-# style pool offset 4bytes - header end
-
-# StringOffsets StringCount * 4bytes
-# StypeOffsets  StyleCount * 4bytes
-# String Pool
-# Style Pool
-
-#!SECTION ResourceID Chunk
-# magic 4bytes 0x00080180
-    # chunk type 0x180
-    # header size 0x8
-# chunk size 4bytes
-# NOTE 这个计算不好说
-# resourceIDs (chunk_size/4-2)*4
-
-#!SECTION Xml Content Chunk
-# magic 4bytes 0x0010 0104
-    # chunk type 0x104
-    # header size 0x10
-# chunk size 4bytes
-# line number 4bytes
-# 未知flag 4bytes
-
-# name 4bytes
-# 未知 4bytes
-# 未知 4bytes
-
-#!SECTION Start Tag Chunk
-# magic 4bytes 0x0010 0102
-    # chunk type 0x102
-    # header size 0x10
-# chunk size 4bytes
-# line number 4bytes
-# 未知flag 4bytes
-
-# namespace uri 4bytes
-# name 4bytes
-# flags 4bytes 0x0014 0014 
-# attribute count 4bytes
-# class count 4bytes
-# TODO 这个计算方式是？
-# attributes  attribute_count * 5 * 4bytes
+# log.setLevel(logging.DEBUG)
+# handler = logging.FileHandler("axml.log")
+# handler.setFormatter(
+#     logging.Formatter("%(levelname)s[%(name)s][%(lineno)d]: %(message)s")
+# )
+# log.addHandler(handler)
 
 # ---------------------------------------------------------------------------- #
 
 # ------------------------------- ResourceTypes ------------------------------ #
 # See http://androidxref.com/9.0.0_r3/xref/frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h#258
 # 资源块中值的类型
-TYPE_NULL = 0x00 # 数据只有0或1
+TYPE_NULL = 0x00  # 数据只有0或1
 # The 'data' holds a ResTable_ref, a reference to another resource table entry.
 TYPE_REFERENCE = 0x01
 # The 'data' holds an attribute resource identifier.
@@ -113,19 +57,19 @@ TYPE_INT_HEX = 0x11
 # The 'data' is either 0 or 1, for input "false" or "true" respectively.
 TYPE_INT_BOOLEAN = 0x12
 # Beginning of color integer flavors...
-TYPE_FIRST_COLOR_INT = 0x1c
+TYPE_FIRST_COLOR_INT = 0x1C
 # The 'data' is a raw integer value of the form #aarrggbb.
-TYPE_INT_COLOR_ARGB8 = 0x1c
+TYPE_INT_COLOR_ARGB8 = 0x1C
 # The 'data' is a raw integer value of the form #rrggbb.
-TYPE_INT_COLOR_RGB8 = 0x1d
+TYPE_INT_COLOR_RGB8 = 0x1D
 # The 'data' is a raw integer value of the form #argb.
-TYPE_INT_COLOR_ARGB4 = 0x1e
+TYPE_INT_COLOR_ARGB4 = 0x1E
 # The 'data' is a raw integer value of the form #rgb.
-TYPE_INT_COLOR_RGB4 = 0x1f
+TYPE_INT_COLOR_RGB4 = 0x1F
 # ...end of integer flavors.
-TYPE_LAST_COLOR_INT = 0x1f
+TYPE_LAST_COLOR_INT = 0x1F
 # ...end of integer flavors.
-TYPE_LAST_INT = 0x1f
+TYPE_LAST_INT = 0x1F
 
 # ------------------------- 头部格式定义 ------------------------- #
 # http://androidxref.com/9.0.0_r3/xref/frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h#193
@@ -151,6 +95,194 @@ RES_TABLE_TYPE_TYPE = 0x0201
 RES_TABLE_TYPE_SPEC_TYPE = 0x0202
 RES_TABLE_LIBRARY_TYPE = 0x0203
 
+
+class RES_CHUNK_TYPE(Enum):
+    RES_NULL_TYPE = 0x0000
+
+    RES_STRING_POOL_TYPE = 0x0001
+    RES_TABLE_TYPE = 0x0002
+    RES_XML_TYPE = 0x0003
+
+    RES_XML_START_NAMESPACE_TYPE = 0x0100
+    RES_XML_END_NAMESPACE_TYPE = 0x0101
+    RES_XML_START_ELEMENT_TYPE = 0x0102
+    RES_XML_END_ELEMENT_TYPE = 0x0103
+    RES_XML_CDATA_TYPE = 0x0104
+
+    RES_XML_RESOURCE_MAP_TYPE = 0x0180
+
+    RES_TABLE_PACKAGE_TYPE = 0x0200
+    RES_TABLE_TYPE_TYPE = 0x0201
+    RES_TABLE_TYPE_SPEC_TYPE = 0x0202
+    RES_TABLE_LIBRARY_TYPE = 0x0203
+
+    RES_UNVALID_TYPE = 0xFFFF
+
+
+def get_res_type(value: int) -> str:
+    for v in RES_CHUNK_TYPE:
+        if v.value == value:
+            return v.name
+    return RES_CHUNK_TYPE.RES_UNVALID_TYPE.name
+    # try:
+    #     return RES_CHUNK_TYPE(value).name
+    # except Exception:
+    #     return RES_CHUNK_TYPE.RES_UNVALID_TYPE.name
+
+
+DEFAULT_HEADER_SIZES = {
+    RES_XML_TYPE: 8,
+    RES_STRING_POOL_TYPE: 28,
+    RES_TABLE_TYPE: 12,
+    RES_XML_RESOURCE_MAP_TYPE: 8,
+    RES_XML_START_ELEMENT_TYPE: 16,
+    RES_XML_END_ELEMENT_TYPE: 16,
+    RES_XML_START_NAMESPACE_TYPE: 16,
+    RES_XML_END_NAMESPACE_TYPE: 16,
+    RES_TABLE_PACKAGE_TYPE: 288,
+    RES_TABLE_TYPE_SPEC_TYPE: 16,
+}
+
+
+def verify_chunk_header_size(ctype: int, header_size: int):
+    default_size = DEFAULT_HEADER_SIZES.get(ctype, -1)
+    if default_size != -1:
+        if default_size > header_size:
+            msg = "[Verify] header size 小于默认值 {} !".format(default_size)
+            log.error(msg)
+            raise ResParserError(msg)
+
+        if default_size < header_size:
+            n = header_size - default_size
+            log.warning(
+                "[Verify] header size {} 大于默认值 {}".format(header_size, default_size)
+            )
+            log.warning("[Verify] 头部后面可能存在多余的数据，数量为 {}".format(n))
+            return n  # NOTE 需要根据这个值跳过填充数据
+    else:
+        # TODO 不存在该类型
+        return -1
+
+    return 0
+
+
+class ResChunkHeader:
+    """
+    ResChunk_header 一共8个字节
+    uint16_t type;
+    uint16_t headerSize;
+    uint32_t size;
+
+    通过头的类型来判断是一个什么类型的ResChunk。
+    然后，再决定使用什么方式去解析数据。
+
+    See http://androidxref.com/9.0.0_r3/xref/frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h#196
+    :raises: ResParserError
+    """  # noqa: E501
+
+    HEADER_SIZE = 2 + 2 + 4
+
+    def __init__(self, buff: bytecode.BuffHandle, expected_type=None, force=False):
+        """
+        :param buff: the buffer set to the position where the header starts.
+        :param int expected_type: the type of the header which is expected.
+        """
+        self.start = buff.get_idx()
+        if buff.size() < self.start + self.HEADER_SIZE:
+            raise ResParserError(
+                "Can not read over the buffer size! Offset={}".format(self.start)
+            )
+
+        self._type, self._header_size, self._size = unpack(
+            "<HHL", buff.read(self.HEADER_SIZE)
+        )
+
+        log.info(
+            "[ResChunk] type={} start={}, header_size={}, size={}, end={}".format(
+                get_res_type(self._type), self.start, self.header_size, 
+                self._size, self.end
+            )
+        )
+
+        if expected_type and self._type != expected_type:
+            if force:
+                "[ResChunk] 解析 AndroidManifest 类型不对，直接修复。"
+                self._type = expected_type
+            else:
+                raise ResParserError(
+                    "[ResChunk] 目标类型不对: Got 0x{:04x}, wanted 0x{:04x}".format(
+                        self._type, expected_type
+                    )
+                )
+
+        # chunk size 小于 8，这种情况不可能存在。
+        if self._size < self.HEADER_SIZE:
+            raise ResParserError(
+                "chunk size 小于 header size {}! Offset={}".format(
+                    self.HEADER_SIZE, self.start
+                )
+            )
+
+        # chunk size 比 头还小，这不可能存在。
+        if self._size < self._header_size:
+            log.error(
+                "[ResChunk] size={} < header size={}".format(
+                    self._size, self._header_size
+                )
+            )
+            raise ResParserError(
+                "declared chunk size ({}) is smaller than header size ({})! Offset={}".format(  # noqa: E501
+                    self._size, self._header_size, self.start
+                )
+            )
+
+    @property
+    def type(self):
+        """
+        Type identifier for this chunk
+        """
+        return self._type
+
+    def fix_type(self, _type):
+        self._type = _type
+
+    @property
+    def header_size(self):
+        """
+        Size of the chunk header (in bytes).  Adding this value to
+        the address of the chunk allows you to find its associated data
+        (if any).
+        """
+        return self._header_size
+
+    @property
+    def size(self):
+        """
+        Total size of this chunk (in bytes).  This is the chunkSize plus
+        the size of any data associated with the chunk.  Adding this value
+        to the chunk allows you to completely skip its contents (including
+        any child chunks).  If this value is the same as chunkSize, there is
+        no data associated with the chunk.
+        """
+        return self._size
+
+    @property
+    def end(self):
+        """
+        Get the absolute offset inside the file, where the chunk ends.
+        This is equal to `ARSCHeader.start + ARSCHeader.size`.
+        下一个Chunk的开始地址。
+        """
+        return self.start + self.size
+
+    def __repr__(self):
+        return (
+            "<ARSCHeader idx='0x{:08x}' type='{}' header_size='{}' size='{}'>".format(
+                self.start, self.type, self.header_size, self.size
+            )
+        )
+
+
 # Flags in the STRING Section
 SORTED_FLAG = 1 << 0
 UTF8_FLAG = 1 << 8
@@ -161,7 +293,7 @@ ATTRIBUTE_IX_NAME = 1
 ATTRIBUTE_IX_VALUE_STRING = 2
 ATTRIBUTE_IX_VALUE_TYPE = 3
 ATTRIBUTE_IX_VALUE_DATA = 4
-ATTRIBUTE_LENGHT = 5 # 5个字节
+ATTRIBUTE_LENGHT = 5  # 5个字节
 
 # Table used to lookup functions to determine the value representation in ARSCParser
 TYPE_TABLE = {
@@ -200,12 +332,13 @@ def complexToFloat(xcomplex):
     """
     return float(xcomplex & 0xFFFFFF00) * RADIX_MULTS[(xcomplex >> 4) & 3]
 
-def print_nrange(alist:list, n: int):
-    for b in [alist[i:i + n] for i in range(0, len(alist), n)]:
+
+def print_nrange(alist: list, n: int):
+    for b in [alist[i : i + n] for i in range(0, len(alist), n)]:
         print(b)
 
 
-class StringBlock:
+class ResStringPoolHeader:
     """
     StringBlock is a CHUNK inside an AXML File: `ResStringPool_header`
     It contains all strings, which are used by referecing to ID's
@@ -218,28 +351,29 @@ class StringBlock:
         :param buff: buffer which holds the string block
         :param header: a instance of :class:`~ARSCHeader`
         """
+        log.info("解析StringBlock, is_android_manifest: {}".format(is_android_manifest))
         self._cache = {}
+
         self.header = header
-
-        print("is_android_manifest", is_android_manifest)
-
         self.stringCount = unpack("<I", buff.read(4))[0]
-        
+        log.info("字符串数量: {}".format(self.stringCount))
+
         self.styleCount = 0
         if is_android_manifest:
             buff.read(4)
         else:
             self.styleCount = unpack("<I", buff.read(4))[0]
+        log.info("样式数量: {}".format(self.stringCount))
 
         # flags is_utf8
         self.flags = unpack("<I", buff.read(4))[0]
         self.m_isUTF8 = (self.flags & UTF8_FLAG) != 0
 
+        # stringsStart 字符串数据开始的位置
         # string_pool_offset
         # The string offset is counted from the beginning of the string section
         self.stringsOffset = unpack("<I", buff.read(4))[0]
-        
-        # style_pool_offset
+
         # The styles offset is counted as well from the beginning of the string section
         self.stylesOffset = 0
         if is_android_manifest:
@@ -253,30 +387,32 @@ class StringBlock:
                 "Styles Offset given, but styleCount is zero. "
                 "This is not a problem but could indicate packers."
             )
-        
+
         self.m_stringOffsets = []
         self.m_styleOffsets = []
         self.m_charbuff = ""
         self.m_styles = []
 
+        # 字符串池与字符串偏移数组的差，这个是一个固定值
+        N = 6  # NOTE resource.arsc
+        if is_android_manifest:
+            N = 8  # NOTE AndroidManifest.xml
         for i in range(self.stringCount):
             offset = unpack("<I", buff.read(4))[0]
             self.m_stringOffsets.append(offset)
-            
-            # NOTE stringCount 有可能是伪造的
-            # 正常情况下，stringCount + 8，就是buff当前的位置
-            if self.stringsOffset + 8 == buff.get_idx():
+
+            # 通常情况，不会执行这个，只有 stringCount 伪造一个超大的值才会执行到这里
+            if self.stringsOffset + N == buff.get_idx():
                 self.stringCount = i
                 buff.set_idx(buff.get_idx())
                 break
-        
+
         # And a list of styles
         # again, a list of offsets
         for i in range(self.styleCount):
             self.m_styleOffsets.append(unpack("<I", buff.read(4))[0])
 
         size = self.header.size - self.stringsOffset
-
 
         # if there are styles as well, we do not want to read them too.
         # Only read them, if no
@@ -296,9 +432,9 @@ class StringBlock:
 
             for i in range(0, size // 4):
                 self.m_styles.append(unpack("<I", buff.read(4))[0])
-        
-        self.show()
-        
+
+        # self.show()
+
     def __repr__(self):
         return "<StringPool #strings={}, #styles={}, UTF8={}>".format(
             self.stringCount, self.styleCount, self.m_isUTF8
@@ -510,6 +646,7 @@ START_TAG = 2
 END_TAG = 3
 TEXT = 4
 
+
 class AXMLParser:
     """
     AXMLParser reads through all chunks in the AXML file
@@ -537,10 +674,13 @@ class AXMLParser:
     def __init__(self, raw_buff, is_android_manifest=False):
         self._reset()
 
+        log.info(
+            "------------------------- 解析 AndroidManifest.xml 文件 ------------------------"
+        )  # noqa: E501
         self._valid = True
         self.axml_tampered = False
         self.buff = bytecode.BuffHandle(raw_buff)
-        
+
         if self.buff.size() < 8:
             self._valid = False
             return
@@ -551,11 +691,13 @@ class AXMLParser:
 
         # 解析AXML头，4个字节是类型，4个字节是文件大小
         try:
-            axml_header = ARSCHeader(self.buff)
+            axml_header = ResChunkHeader(self.buff, expected_type=RES_XML_TYPE, force=True)  # noqa: E501
         except ResParserError as e:
             log.error("Error parsing first resource header: %s", e)
             self._valid = False
             return
+
+        verify_chunk_header_size(RES_XML_TYPE, axml_header.header_size)
 
         self.filesize = axml_header.size
 
@@ -576,7 +718,7 @@ class AXMLParser:
 
         # 解析下一个头 - String Pool Chunk
         try:
-            header = ARSCHeader(self.buff, expected_type=RES_STRING_POOL_TYPE)
+            header = ResChunkHeader(self.buff, expected_type=RES_STRING_POOL_TYPE)
         except ResParserError as e:
             log.error("Error parsing resource header of string pool: %s", e)
             self._valid = False
@@ -586,14 +728,13 @@ class AXMLParser:
             self._valid = False
             return
 
-        self.sb = StringBlock(self.buff, header, is_android_manifest)
-        
+        self.sb = ResStringPoolHeader(self.buff, header, is_android_manifest)
+
         # Stores resource ID mappings, if any
         self.m_resourceIDs = []
 
         # Store a list of prefix/uri mappings encountered
         self.namespaces = []
-
 
     def is_valid(self):
         """
@@ -630,13 +771,13 @@ class AXMLParser:
 
             # Again, we read an ARSCHeader
             try:
-                h = ARSCHeader(self.buff)
+                h = ResChunkHeader(self.buff)
             except ResParserError as e:
                 log.error("Error parsing resource header: %s", e)
                 self._valid = False
                 return
 
-            # Special chunk: Resource Map. 
+            # Special chunk: Resource Map.
             if h.type == RES_XML_RESOURCE_MAP_TYPE:
                 # Check size: < 8 bytes mean that the chunk is not complete
                 # Should be aligned to 4 bytes.
@@ -647,7 +788,6 @@ class AXMLParser:
 
                 for i in range((h.size - h.header_size) // 4):
                     self.m_resourceIDs.append(unpack("<L", self.buff.read(4))[0])
-
                 continue
 
             # Parse now the XML chunks.
@@ -655,8 +795,8 @@ class AXMLParser:
                 # h.size is the size of the whole chunk including the header.
                 # We read already 8 bytes of the header, thus we need to subtract them.
                 log.error(
-                    "Not a XML resource chunk type: 0x{:04x}. Skipping {} bytes".format(
-                        h.type, h.size
+                    "Not a XML resource chunk type: 0x{:04x}. Skipping {} bytes, end={}".format(  # noqa: E501
+                        h.type, h.size, h.end
                     )
                 )
                 self.buff.set_idx(h.end)
@@ -690,17 +830,14 @@ class AXMLParser:
                 )
 
             if h.type == RES_XML_START_NAMESPACE_TYPE:
+                log.debug("解析 RES_XML_START_NAMESPACE_TYPE")
                 (prefix,) = unpack("<L", self.buff.read(4))
                 (uri,) = unpack("<L", self.buff.read(4))
 
                 s_prefix = self.sb[prefix]
                 s_uri = self.sb[uri]
 
-                log.debug(
-                    "Start of Namespace mapping: prefix {}: '{}' --> uri {}: '{}'".format(
-                        prefix, s_prefix, uri, s_uri
-                    )
-                )
+                log.debug("'{}' --> {}'".format(s_prefix, s_uri))
 
                 if s_uri == "":
                     log.warning(
@@ -746,6 +883,10 @@ class AXMLParser:
                 # * flags
                 # * attribute_count
                 # * class_attribute
+                # * 后
+
+                verify_chunk_header_size(RES_XML_START_ELEMENT_TYPE, h.header_size)
+
                 # Namespace URI (String ID)
                 (self.m_namespaceUri,) = unpack("<L", self.buff.read(4))
                 # Name of the Tag (String ID)
@@ -760,24 +901,31 @@ class AXMLParser:
                 (idIndex,) = unpack("<H", self.buff.read(2))
                 (classIndex,) = unpack("<H", self.buff.read(2))
                 (styleIndex,) = unpack("<H", self.buff.read(2))
-                
+
                 self.m_attribute_count = attributeCount
                 self.m_idAttribute = idIndex
                 self.m_classAttribute = classIndex
                 self.m_styleAttribute = styleIndex
 
                 # 结构体的字节数
-                nbytes = int(attributeSize/4) # 一次读4个字节
+                nbytes = int(attributeSize / 4)  # 一次读4个字节
                 # 一次nop的数量，至少要4个字节，一次可以nop 4*n个字节。
                 nop_num = attributeSize - 20
-                skip_n = int(nop_num/4)
-                max_n = 5+skip_n
+                skip_n = int(nop_num / 4)
+                max_n = 5 + skip_n
+
+                if nop_num > 0:
+                    log.warning(
+                        "[RES_XML_START_ELEMENT_TYPE] Attribute Chunk，填充{}位".format(
+                            nop_num
+                        )
+                    )  # noqa: E501
 
                 counter = 0
                 for i in range(0, (self.m_attribute_count * nbytes)):  # noqa: E501
                     counter += 1
                     # ! nop_num > 0 是必须的，针对没有nop的情况。
-                    if nop_num>0 and counter == max_n:
+                    if nop_num > 0 and counter == max_n:
                         self.buff.read(nop_num)
                         counter = 0
                         continue
@@ -1432,6 +1580,9 @@ class ARSCParser:
         """
         :param bytes raw_buff: the raw bytes of the file
         """
+        log.info(
+            "---------------------------- 解析 resource.arsc 文件 ---------------------------"
+        )  # noqa: E501
         self.buff = bytecode.BuffHandle(raw_buff)
 
         if self.buff.size() < 8 or self.buff.size() > 0xFFFFFFFF:
@@ -1451,20 +1602,21 @@ class ARSCParser:
         self.stringpool_main = None
 
         # First, there is a ResTable_header.
-        self.header = ARSCHeader(self.buff, expected_type=RES_TABLE_TYPE)
+        log.info("解析ARSC - ResTable_header.ResChunk_header")
+        self.header = ResChunkHeader(self.buff, expected_type=RES_TABLE_TYPE)
+        verify_chunk_header_size(RES_TABLE_TYPE, self.header.header_size)
 
         # More sanity checks...
         if self.header.header_size != 12:
             log.warning(
-                "The ResTable_header has an unexpected header size! Expected 12 bytes, got {}.".format(
-                    self.header.header_size
-                )
+                "header.header_size 不是12个字节，而是 {}.".format(self.header.header_size)
             )
 
         if self.header.size > self.buff.size():
             raise ResParserError(
-                "The file seems to be truncated. Refuse to parse the file! Filesize: {}, declared size: {}".format(
-                    self.buff.size(), self.header.size
+                "ResTable_header.size = {}，实际大小为 {}；定义文件大小异常，不解析。".format(
+                    self.header.size,
+                    self.buff.size(),
                 )
             )
 
@@ -1477,44 +1629,52 @@ class ARSCParser:
 
         # The ResTable_header contains the packageCount, i.e. the number of ResTable_package
         self.packageCount = unpack("<I", self.buff.read(4))[0]
-
+        log.info("解析ARSC - ResTable_header.packageCount = {}".format(self.packageCount))
+        
         # Even more sanity checks...
         if self.packageCount < 1:
-            log.warning(
-                "The number of packages is smaller than one. There should be at least one package!"
-            )
+            log.warning("至少要有一个包!")
 
-        log.debug(
-            "Parsed ResTable_header with {} package(s) inside.".format(
-                self.packageCount
-            )
-        )
+        # 解析完毕之后，下一个一定是一个字符串池
+        is_string_pool = True
 
-        # skip to the start of the first chunk's data, skipping trailing header bytes (there should be none)
+        # 直接跳到后面数据块的开头，一般情况下，这个值是12。
         self.buff.set_idx(self.header.start + self.header.header_size)
+        log.info("当前的地址是: {}".format(self.buff.get_idx()))
 
-        # Now parse the data:
-        # We should find one ResStringPool_header and one or more ResTable_package chunks inside
-        while self.buff.get_idx() <= self.header.end - ARSCHeader.HEADER_SIZE:
-            res_header = ARSCHeader(self.buff)
+        # 后面是
+        # ResStringPool_header
+        # ResTable_package
+        while self.buff.get_idx() <= self.header.end - ResChunkHeader.HEADER_SIZE:
+            res_header = ResChunkHeader(self.buff)
+            # if res_header.end > self.header.end:
+            #     # this inner chunk crosses the boundary of the table chunk
+            #     log.warning(
+            #         "Invalid chunk found! It is larger than the outer chunk: %s",
+            #         res_header,
+            #     )
+            #     break
+            if res_header.type == RES_NULL_TYPE:
+                log.warning("[RES_NULL_TYPE] - 跳过{}个填充位".format(res_header.size))
+                self.buff.set_idx(
+                    self.buff.get_idx() - res_header.header_size + res_header.size
+                )  # noqa: E501
+                continue
 
-            if res_header.end > self.header.end:
-                # this inner chunk crosses the boundary of the table chunk
-                log.warning(
-                    "Invalid chunk found! It is larger than the outer chunk: %s",
-                    res_header,
-                )
-                break
+            if res_header.type not in {RES_STRING_POOL_TYPE, RES_TABLE_PACKAGE_TYPE}:
+                addr = self.buff.get_idx()
+                log.info("未知Chunk跳过，当前的地址是: {} = {}".format(addr, hex(addr)))
+                continue
 
             if res_header.type == RES_STRING_POOL_TYPE:
-                # There should be only one StringPool per resource table.
+                log.info("开始解析字符串池 RES_STRING_POOL_TYPE")
                 if self.stringpool_main:
-                    log.warning(
-                        "Already found a ResStringPool_header, but there should be only one! Will not parse the Pool again."
+                    raise ResParserError(
+                        "There can be only one StringPool per resource table!"
                     )
                 else:
-                    self.stringpool_main = StringBlock(self.buff, res_header)
-                    log.debug("Found the main string pool: %s", self.stringpool_main)
+                    self.stringpool_main = ResStringPoolHeader(self.buff, res_header)
+                log.debug("找到一个字符串池 {}".format(self.stringpool_main))
 
             elif res_header.type == RES_TABLE_PACKAGE_TYPE:
                 if len(self.packages) > self.packageCount:
@@ -1524,26 +1684,26 @@ class ARSCParser:
                         )
                     )
 
-                current_package = ARSCResTablePackage(self.buff, res_header)
+                current_package = ResTablePackage(self.buff, res_header)
                 package_name = current_package.get_name()
-
+                log.debug("Parsing package {}".format(package_name))
                 # After the Header, we have the resource type symbol table
                 self.buff.set_idx(
                     current_package.header.start + current_package.typeStrings
                 )
-                type_sp_header = ARSCHeader(
+                type_sp_header = ResChunkHeader(
                     self.buff, expected_type=RES_STRING_POOL_TYPE
                 )
-                mTableStrings = StringBlock(self.buff, type_sp_header)
+                mTableStrings = ResStringPoolHeader(self.buff, type_sp_header)
 
                 # Next, we should have the resource key symbol table
                 self.buff.set_idx(
                     current_package.header.start + current_package.keyStrings
                 )
-                key_sp_header = ARSCHeader(
+                key_sp_header = ResChunkHeader(
                     self.buff, expected_type=RES_STRING_POOL_TYPE
                 )
-                mKeyStrings = StringBlock(self.buff, key_sp_header)
+                mKeyStrings = ResStringPoolHeader(self.buff, key_sp_header)
 
                 # Add them to the dict of read packages
                 self.packages[package_name].append(current_package)
@@ -1553,13 +1713,13 @@ class ARSCParser:
                 pc = PackageContext(
                     current_package, self.stringpool_main, mTableStrings, mKeyStrings
                 )
-                log.debug("Constructed a PackageContext: %s", pc)
+                # log.debug("Constructed a PackageContext: %s", pc)
 
                 # skip to the first header in this table package chunk
                 # FIXME is this correct? We have already read the first two sections!
                 # self.buff.set_idx(res_header.start + res_header.header_size)
                 # this looks more like we want: (???)
-                # FIXME 
+                # FIXME
                 # 看起来我们读到的两个字符串池可能不会相互连接，因此跳转到大小的和可能是不正确的…
                 next_idx = (
                     res_header.start
@@ -1587,9 +1747,10 @@ class ARSCParser:
                 self.buff.set_idx(next_idx)
 
                 # Read all other headers
-                while self.buff.get_idx() <= res_header.end - ARSCHeader.HEADER_SIZE:
-                    pkg_chunk_header = ARSCHeader(self.buff)
-                    log.debug("Found a header: {}".format(pkg_chunk_header))
+                while (
+                    self.buff.get_idx() <= res_header.end - ResChunkHeader.HEADER_SIZE
+                ):
+                    pkg_chunk_header = ResChunkHeader(self.buff)
                     if pkg_chunk_header.start + pkg_chunk_header.size > res_header.end:
                         # we are way off the package chunk; bail out
                         break
@@ -1598,20 +1759,18 @@ class ARSCParser:
 
                     if pkg_chunk_header.type == RES_TABLE_TYPE_SPEC_TYPE:
                         self.packages[package_name].append(
-                            ARSCResTypeSpec(self.buff, pc)
+                            ResTableTypeSpec(self.buff, pc)
                         )
 
                     elif pkg_chunk_header.type == RES_TABLE_TYPE_TYPE:
-                        # Parse a RES_TABLE_TYPE
-                        # http://androidxref.com/9.0.0_r3/xref/frameworks/base/tools/aapt2/format/binary/BinaryResourceParser.cpp#311
-                        a_res_type = ARSCResType(self.buff, pc)
+                        a_res_type = ResTableType(pkg_chunk_header, self.buff, pc)
+
                         self.packages[package_name].append(a_res_type)
                         self.resource_configs[package_name][a_res_type].add(
                             a_res_type.config
                         )
 
-                        log.debug("Config: {}".format(a_res_type.config))
-
+                        log.debug("a_res_type.entryCount = {}".format(a_res_type.entryCount))
                         entries = []
                         for i in range(0, a_res_type.entryCount):
                             current_package.mResId = (
@@ -1623,15 +1782,17 @@ class ARSCParser:
                                     current_package.mResId,
                                 )
                             )
-
+                        log.debug("entries num: {}".format(len(entries)))
                         self.packages[package_name].append(entries)
+                        log.debug("idx - {}".format(self.buff.get_idx()))
 
                         for entry, res_id in entries:
                             if self.buff.end():
                                 break
 
                             if entry != -1:
-                                ate = ARSCResTableEntry(self.buff, res_id, pc)
+                                ate = ResTableEntry(pkg_chunk_header.end,self.buff, 
+                                                    res_id, pc)
                                 self.packages[package_name].append(ate)
                                 if ate.is_weak():
                                     # FIXME we are not sure how to implement the FLAG_WEAK!
@@ -1647,16 +1808,20 @@ class ARSCParser:
                     else:
                         # Unknown / not-handled chunk type
                         log.warning(
-                            "Unknown chunk type encountered inside RES_TABLE_PACKAGE: %s",
-                            pkg_chunk_header,
+                            (
+                                "Unknown chunk type encountered inside "
+                                "RES_TABLE_PACKAGE: {}"
+                            ).format(pkg_chunk_header)
                         )
 
                     # skip to the next chunk
                     self.buff.set_idx(pkg_chunk_header.end)
             else:
                 # Unknown / not-handled chunk type
+                log.warning("非 RES_STRING_POOL_TYPE 和 RES_TABLE_PACKAGE_TYPE 类型的chunk")
                 log.warning("Unknown chunk type encountered: %s", res_header)
 
+            log.info("move to the next resource chunk: {}".format(res_header.end))
             # move to the next resource chunk
             self.buff.set_idx(res_header.end)
 
@@ -1672,7 +1837,7 @@ class ARSCParser:
             nb = 3
             while nb < len(self.packages[package_name]):
                 header = self.packages[package_name][nb]
-                if isinstance(header, ARSCHeader):
+                if isinstance(header, ResChunkHeader):
                     if header.type == RES_TABLE_TYPE_TYPE:
                         a_res_type = self.packages[package_name][nb + 1]
 
@@ -1778,22 +1943,17 @@ class ARSCParser:
         ]
 
     def get_resource_dimen(self, ate):
-        try:
+        data = ate.key.get_data()
+        if len(DIMENSION_UNITS) < (data & COMPLEX_UNIT_MASK):
+            return [ate.get_value(), data]
+        else:
             return [
                 ate.get_value(),
                 "{}{}".format(
-                    complexToFloat(ate.key.get_data()),
-                    DIMENSION_UNITS[ate.key.get_data() & COMPLEX_UNIT_MASK],
+                    complexToFloat(data),
+                    DIMENSION_UNITS[data & COMPLEX_UNIT_MASK],
                 ),
             ]
-        except IndexError:
-            log.debug(
-                "Out of range dimension unit index for {}: {}".format(
-                    complexToFloat(ate.key.get_data()),
-                    ate.key.get_data() & COMPLEX_UNIT_MASK,
-                )
-            )
-            return [ate.get_value(), ate.key.get_data()]
 
     def get_resource_style(self, ate):
         return ["", ""]
@@ -1963,7 +2123,11 @@ class ARSCParser:
 
         try:
             for i in self.values[package_name][locale]["bool"]:
-                buff += '<bool name="{}">{}</bool>\n'.format(i[0], i[1])
+                if len(i) == 1:
+                    log.warning("[get_bool_resources][bool] item size=1")
+                    buff += '<bool name="{}">{}</bool>\n'.format(i[0], "false")
+                else:
+                    buff += '<bool name="{}">{}</bool>\n'.format(i[0], i[1])
         except KeyError:
             pass
 
@@ -2161,8 +2325,9 @@ class ARSCParser:
         :param ARSCTableResConfig config: the desired configuration or None to retrieve all
         :return: A list of tuples of (ARSCResTableConfig, str)
         """
-        resolver = ARSCParser.ResourceResolver(self, config)
-        return resolver.resolve(rid)
+        # resolver = ARSCParser.ResourceResolver(self, config)
+        # return resolver.resolve(rid)
+        return
 
     def get_resolved_strings(self):
         self._analyse()
@@ -2238,7 +2403,7 @@ class ARSCParser:
         if len(res_options) > 1 and config:
             if config in res_options:
                 return [(config, res_options[config])]
-            elif fallback and config == ARSCResTableConfig.default_config():
+            elif fallback and config == ResTableConfig.default_config():
                 log.warning(
                     "No default resource config could be found for the given rid '0x{:08x}', using fallback!".format(
                         rid
@@ -2389,107 +2554,7 @@ class PackageContext:
         )
 
 
-class ARSCHeader:
-    """
-    通常是 
-    magic   03 00 08 00
-    文件大小 FF FF FF FF 
-
-    这个头结构是通用的，适合里面所有的结构。
-
-
-    See http://androidxref.com/9.0.0_r3/xref/frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h#196
-    :raises: ResParserError
-    """
-    HEADER_SIZE = 2 + 2 + 4
-
-    def __init__(self, buff, expected_type=None):
-        """
-        :param androguard.core.bytecode.BuffHandle buff: the buffer set to the position where the header starts.
-        :param int expected_type: the type of the header which is expected.
-        """
-        self.start = buff.get_idx()
-        # Make sure we do not read over the buffer:
-        if buff.size() < self.start + self.HEADER_SIZE:
-            raise ResParserError(
-                "Can not read over the buffer size! Offset={}".format(self.start)
-            )
-
-        self._type, self._header_size, self._size = unpack("<HHL", buff.read(self.HEADER_SIZE))
-
-        if expected_type and self._type != expected_type:
-            raise ResParserError(
-                "Header type is not equal the expected type: Got 0x{:04x}, wanted 0x{:04x}".format(
-                    self._type, expected_type
-                )
-            )
-
-        # Assert that the read data will fit into the chunk.
-        # The total size must be equal or larger than the header size
-        if self._header_size < self.HEADER_SIZE:
-            raise ResParserError(
-                "declared header size is smaller than required size of {}! Offset={}".format(
-                    self.HEADER_SIZE, self.start
-                )
-            )
-        
-        if self._size < self.HEADER_SIZE:
-            raise ResParserError(
-                "declared chunk size is smaller than required size of {}! Offset={}".format(
-                    self.HEADER_SIZE, self.start
-                )
-            )
-        if self._size < self._header_size:
-            raise ResParserError(
-                "declared chunk size ({}) is smaller than header size ({})! Offset={}".format(
-                    self._size, self._header_size, self.start
-                )
-            )
-
-    @property
-    def type(self):
-        """
-        Type identifier for this chunk
-        """
-        return self._type
-
-    @property
-    def header_size(self):
-        """
-        Size of the chunk header (in bytes).  Adding this value to
-        the address of the chunk allows you to find its associated data
-        (if any).
-        """
-        return self._header_size
-
-    @property
-    def size(self):
-        """
-        Total size of this chunk (in bytes).  This is the chunkSize plus
-        the size of any data associated with the chunk.  Adding this value
-        to the chunk allows you to completely skip its contents (including
-        any child chunks).  If this value is the same as chunkSize, there is
-        no data associated with the chunk.
-        """
-        return self._size
-
-    @property
-    def end(self):
-        """
-        Get the absolute offset inside the file, where the chunk ends.
-        This is equal to `ARSCHeader.start + ARSCHeader.size`.
-        """
-        return self.start + self.size
-
-    def __repr__(self):
-        return (
-            "<ARSCHeader idx='0x{:08x}' type='{}' header_size='{}' size='{}'>".format(
-                self.start, self.type, self.header_size, self.size
-            )
-        )
-
-
-class ARSCResTablePackage:
+class ResTablePackage:
     """
     A `ResTable_package`
 
@@ -2501,7 +2566,7 @@ class ARSCResTablePackage:
         self.start = buff.get_idx()
         self.id = unpack("<I", buff.read(4))[0]
         # 128 times 16bit -> read 256 bytes
-        # TODO why not read a null terminated string in buffer 
+        # TODO why not read a null terminated string in buffer
         # (like the meth name suggests) instead of parsing it later in get_name()?
         self.name = buff.readNullString(256)
         self.typeStrings = unpack("<I", buff.read(4))[0]
@@ -2510,43 +2575,52 @@ class ARSCResTablePackage:
         self.lastPublicKey = unpack("<I", buff.read(4))[0]
         self.mResId = self.id << 24
 
+        log.info("[ResTablePackage] start={}, rsize={}".format(self.start, buff.get_idx() - self.start))  # noqa: E501
+
     def get_name(self):
         name = self.name.decode("utf-16", "replace")
         name = name[: name.find("\x00")]
         return name
 
 
-class ARSCResTypeSpec:
-    """
+class ResTableTypeSpec:
+    """ResTable_typeSpec
+
     See http://androidxref.com/9.0.0_r3/xref/frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h#1327
-    """
+    """  # noqa: E501
 
     def __init__(self, buff, parent=None):
+        log.info("ResTable_typeSpec")
         self.start = buff.get_idx()
         self.parent = parent
         self.id = unpack("<B", buff.read(1))[0]
         self.res0 = unpack("<B", buff.read(1))[0]
         self.res1 = unpack("<H", buff.read(2))[0]
+
         if self.res0 != 0:
             raise ResParserError("res0 must be zero!")
         if self.res1 != 0:
             raise ResParserError("res1 must be zero!")
+
         self.entryCount = unpack("<I", buff.read(4))[0]
 
         self.typespec_entries = []
         for i in range(0, self.entryCount):
             self.typespec_entries.append(unpack("<I", buff.read(4))[0])
 
+        log.debug(" -> [ResTableTypeSpec] start={},end={},rsize={}".format(
+            self.start,buff.get_idx(),buff.get_idx()-self.start))
 
-class ARSCResType:
+class ResTableType:
     """
-    This is a `ResTable_type` without it's `ResChunk_header`.
+    ! This is a `ResTable_type` without it's `ResChunk_header`.
     It contains a `ResTable_config`
+    FIXME ResTableType 不是应该带有一个ResChunk_header么？
 
     See http://androidxref.com/9.0.0_r3/xref/frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h#1364
     """
 
-    def __init__(self, buff, parent=None):
+    def __init__(self, chunk_header, buff, parent=None):
         self.start = buff.get_idx()
         self.parent = parent
 
@@ -2562,9 +2636,18 @@ class ARSCResType:
         self.mResId = (0xFF000000 & self.parent.get_mResId()) | self.id << 16
         self.parent.set_mResId(self.mResId)
 
-        self.config = ARSCResTableConfig(buff)
-
-        log.debug("Parsed %s", self)
+        self.config = ResTableConfig(buff)
+        log.info(
+            " -> [ResTableType] start={}, end={}, real_size={}".format(
+                self.start, buff.get_idx(), buff.get_idx() - self.start
+            )
+        )
+        log.info(
+            "   -> [ResTableType] entryCount={}, entriesStart={} [资源开始地址], ".format(
+                self.entryCount, chunk_header.start + self.entriesStart
+            )
+        )
+        log.info(" -> ResTableType.chunk_header.start + entriesStart = ResTableEntry的起始位置")  # noqa: E501
 
     def get_type(self):
         return self.parent.mTableStrings.getString(self.id - 1)
@@ -2573,8 +2656,10 @@ class ARSCResType:
         return self.parent.get_package_name()
 
     def __repr__(self):
-        return ("<ARSCResType(start=0x%x, id=0x%x, flags=0x%x, ",
-                "entryCount=%d, entriesStart=0x%x, mResId=0x%x, %s)>") % (
+        return (
+            "<ARSCResType(start=0x%x, id=0x%x, flags=0x%x, ",
+            "entryCount=%d, entriesStart=0x%x, mResId=0x%x, %s)>",
+        ) % (
             self.start,
             self.id,
             self.flags,
@@ -2585,7 +2670,7 @@ class ARSCResType:
         )
 
 
-class ARSCResTableConfig:
+class ResTableConfig:
     """
     ARSCResTableConfig contains the configuration for specific resource selection.
     This is used on the device to determine which resources should be loaded
@@ -2598,47 +2683,78 @@ class ARSCResTableConfig:
     @classmethod
     def default_config(cls):
         if not hasattr(cls, "DEFAULT"):
-            cls.DEFAULT = ARSCResTableConfig(None)
+            cls.DEFAULT = ResTableConfig(None)
         return cls.DEFAULT
 
-    def __init__(self, buff=None, **kwargs):
+    def __init__(self, buff:bytecode.BuffHandle=None, **kwargs):
+
+        self.input = (
+            ((kwargs.pop("keyboard", 0) & 0xFF) << 0)
+            + ((kwargs.pop("navigation", 0) & 0xFF) << 8)
+            + ((kwargs.pop("inputFlags", 0) & 0xFF) << 16)
+            + ((kwargs.pop("inputPad0", 0) & 0xFF) << 24)
+        )
+
+        self.screenSize = ((kwargs.pop("screenWidth", 0) & 0xFFFF) << 0) + (
+            (kwargs.pop("screenHeight", 0) & 0xFFFF) << 16
+        )
+
+        self.version = ((kwargs.pop("sdkVersion", 0) & 0xFFFF) << 0) + (
+            (kwargs.pop("minorVersion", 0) & 0xFFFF) << 16
+        )
+
+        self.screenConfig = (
+            ((kwargs.pop("screenLayout", 0) & 0xFF) << 0)
+            + ((kwargs.pop("uiMode", 0) & 0xFF) << 8)
+            + ((kwargs.pop("smallestScreenWidthDp", 0) & 0xFFFF) << 16)
+        )
+
+        self.screenSizeDp = ((kwargs.pop("screenWidthDp", 0) & 0xFFFF) << 0) + (
+            (kwargs.pop("screenHeightDp", 0) & 0xFFFF) << 16
+        )
+
+        self.screenConfig2 = 0
+        self.exceedingSize = 0
+        
         if buff is not None:
             self.start = buff.get_idx()
 
-            # uint32_t
+            # 结构体大小
             self.size = unpack("<I", buff.read(4))[0]
 
             # union: uint16_t mcc, uint16_t mnc
-            # 0 means any
+            # mcc 移动国家代码(来自SIM卡)。0表示“任意”。
+            # mnc 移动网络代码(来自SIM卡)。0表示“任意”。
             self.imsi = unpack("<I", buff.read(4))[0]
 
-            # uint32_t as chars \0\0 means any
-            # either two 7bit ASCII representing the ISO-639-1 language code
-            # or a single 16bit LE value representing ISO-639-2 3 letter code
+            # char language[2];
+            # char country[2];
             self.locale = unpack("<I", buff.read(4))[0]
 
-            # struct of:
             # uint8_t orientation
             # uint8_t touchscreen
-            # uint8_t density
+            # uint16_t density
             self.screenType = unpack("<I", buff.read(4))[0]
 
-            # struct of
-            # uint8_t keyboard
-            # uint8_t navigation
-            # uint8_t inputFlags
-            # uint8_t inputPad0
-            self.input = unpack("<I", buff.read(4))[0]
+            if self.size > 20:
+                # struct of
+                # uint8_t keyboard
+                # uint8_t navigation
+                # uint8_t inputFlags
+                # uint8_t inputPad0
+                self.input = unpack("<I", buff.read(4))[0]
 
-            # struct of
-            # uint16_t screenWidth
-            # uint16_t screenHeight
-            self.screenSize = unpack("<I", buff.read(4))[0]
-
-            # struct of
-            # uint16_t sdkVersion
-            # uint16_t minorVersion，它应该总是0，因为含义没有定义
-            self.version = unpack("<I", buff.read(4))[0]
+            if self.size > 24:
+                # struct of
+                # uint16_t screenWidth
+                # uint16_t screenHeight
+                self.screenSize = unpack("<I", buff.read(4))[0]
+            
+            if self.size > 28:
+                # struct of
+                # uint16_t sdkVersion
+                # uint16_t minorVersion，它应该总是0，因为含义没有定义
+                self.version = unpack("<I", buff.read(4))[0]
 
             # The next three fields seems to be optional
             if self.size >= 32:
@@ -2647,22 +2763,12 @@ class ARSCResTableConfig:
                 # uint8_t uiMode
                 # uint16_t smallestScreenWidthDp
                 (self.screenConfig,) = unpack("<I", buff.read(4))
-            else:
-                log.debug(
-                    "This file does not have a screenConfig! size={}".format(self.size)
-                )
-                self.screenConfig = 0
 
             if self.size >= 36:
                 # struct of
                 # uint16_t screenWidthDp
                 # uint16_t screenHeightDp
                 (self.screenSizeDp,) = unpack("<I", buff.read(4))
-            else:
-                log.debug(
-                    "This file does not have a screenSizeDp! size={}".format(self.size)
-                )
-                self.screenSizeDp = 0
 
             if self.size >= 40:
                 # struct of
@@ -2670,17 +2776,11 @@ class ARSCResTableConfig:
                 # uint8_t colorMode
                 # uint16_t screenConfigPad2
                 (self.screenConfig2,) = unpack("<I", buff.read(4))
-            else:
-                log.debug(
-                    "This file does not have a screenConfig2! size={}".format(self.size)
-                )
-                self.screenConfig2 = 0
 
             self.exceedingSize = self.size - (buff.tell() - self.start)
             if self.exceedingSize > 0:
                 log.debug("Skipping padding bytes!")
                 self.padding = buff.read(self.exceedingSize)
-
         else:
             self.start = 0
             self.size = 0
@@ -2697,36 +2797,12 @@ class ARSCResTableConfig:
                 + ((kwargs.pop("touchscreen", 0) & 0xFF) << 8)
                 + ((kwargs.pop("density", 0) & 0xFFFF) << 16)
             )
-
-            self.input = (
-                ((kwargs.pop("keyboard", 0) & 0xFF) << 0)
-                + ((kwargs.pop("navigation", 0) & 0xFF) << 8)
-                + ((kwargs.pop("inputFlags", 0) & 0xFF) << 16)
-                + ((kwargs.pop("inputPad0", 0) & 0xFF) << 24)
+        
+        log.info(
+            " -> [ResTableType][ResTableConfig] start={},end={},size={},rsize={}".format(  # noqa: E501
+                self.start, buff.get_idx(), self.size, buff.get_idx() - self.start
             )
-
-            self.screenSize = ((kwargs.pop("screenWidth", 0) & 0xFFFF) << 0) + (
-                (kwargs.pop("screenHeight", 0) & 0xFFFF) << 16
-            )
-
-            self.version = ((kwargs.pop("sdkVersion", 0) & 0xFFFF) << 0) + (
-                (kwargs.pop("minorVersion", 0) & 0xFFFF) << 16
-            )
-
-            self.screenConfig = (
-                ((kwargs.pop("screenLayout", 0) & 0xFF) << 0)
-                + ((kwargs.pop("uiMode", 0) & 0xFF) << 8)
-                + ((kwargs.pop("smallestScreenWidthDp", 0) & 0xFFFF) << 16)
-            )
-
-            self.screenSizeDp = ((kwargs.pop("screenWidthDp", 0) & 0xFFFF) << 0) + (
-                (kwargs.pop("screenHeightDp", 0) & 0xFFFF) << 16
-            )
-
-            # TODO add this some day...
-            self.screenConfig2 = 0
-
-            self.exceedingSize = 0
+        )
 
     def _unpack_language_or_region(self, char_in, char_base):
         char_out = ""
@@ -2934,7 +3010,7 @@ class ARSCResTableConfig:
         )
 
 
-class ARSCResTableEntry:
+class ResTableEntry:
     """
     A `ResTable_entry`.
 
@@ -2954,24 +3030,37 @@ class ARSCResTableEntry:
     # linking with other resource tables.
     FLAG_WEAK = 4
 
-    def __init__(self, buff, mResId, parent=None):
+    def __init__(self, chunk_end, buff, mResId, parent=None):
         self.start = buff.get_idx()
         self.mResId = mResId
-        self.parent = parent
+        self.parent = parent  # ResTable_ref
+        # 0xpptteeee
 
         self.size = unpack("<H", buff.read(2))[0]
         self.flags = unpack("<H", buff.read(2))[0]
-        # This is a ResStringPool_ref
-        self.index = unpack("<I", buff.read(4))[0]
+        self.index = unpack("<I", buff.read(4))[0]  # ResStringPool_ref
+
+        log.info(
+            " -> [ResTableEntry] flags={}, start={},end={},size={},rsize={}".format(
+                self.flags, self.start, buff.get_idx(), self.size, buff.get_idx() - self.start  # noqa: E501
+            )
+        )
+
+        # NOTE 注意，强制修复，效果未知
+        if self.size == 0xFFFF:
+            self.size = 8
+            log.info("  -> [ResTableEntry] fix size = 8")
+        
+        # NOTE 注意，强制修复，效果未知
+        if self.flags > 7:
+            self.flags = 0
+            log.info("  -> [ResTableEntry] fix flags = 0")
 
         if self.is_complex():
-            self.item = ARSCComplex(buff, parent)
+            log.info("  -> [ResTableEntry] is_complex")
+            self.tmp = ResTableMapEntry(chunk_end, buff, parent)
         else:
-            # If FLAG_COMPLEX is not set, a Res_value structure will follow
-            self.key = ARSCResStringPoolRef(buff, self.parent)
-
-        if self.is_weak():
-            log.debug("Parsed %s", self)
+            self.key = ResValue(buff, self.parent)
 
     def get_index(self):
         return self.index
@@ -2992,7 +3081,10 @@ class ARSCResTableEntry:
         return (self.flags & self.FLAG_WEAK) != 0
 
     def __repr__(self):
-        return "<ARSCResTableEntry idx='0x{:08x}' mResId='0x{:08x}' size='{}' flags='0x{:02x}' index='0x{:x}' holding={}>".format(
+        return (
+            "<ARSCResTableEntry idx='0x{:08x}' mResId='0x{:08x}' size='{}' ",
+            "flags='0x{:02x}' index='0x{:x}' holding={}>",
+        ).format(
             self.start,
             self.mResId,
             self.size,
@@ -3002,7 +3094,7 @@ class ARSCResTableEntry:
         )
 
 
-class ARSCComplex:
+class ResTableMapEntry:
     """
     This is actually a `ResTable_map_entry`
 
@@ -3013,7 +3105,7 @@ class ARSCComplex:
     and http://androidxref.com/9.0.0_r3/xref/frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h#1498 for `ResTable_map`
     """
 
-    def __init__(self, buff, parent=None):
+    def __init__(self, chunk_end, buff, parent=None):
         self.start = buff.get_idx()
         self.parent = parent
 
@@ -3021,13 +3113,28 @@ class ARSCComplex:
         self.count = unpack("<I", buff.read(4))[0]
 
         self.items = []
+        # unpack requires a buffer of 4 bytes
         # Parse self.count number of `ResTable_map`
         # these are structs of ResTable_ref and Res_value
         # ResTable_ref is a uint32_t.
         for i in range(0, self.count):
+            # NOTE 当前位置不能超过chunk大小
+            if buff.tell() + 4 > chunk_end:
+                break
+
+            if buff.get_idx() + 4 > buff.size():
+                log.error("Invalid ResTable_map_entry 溢出")
+                raise Exception("Invalid ResTable_map_entry 溢出")
+
             self.items.append(
-                (unpack("<I", buff.read(4))[0], ARSCResStringPoolRef(buff, self.parent))
+                (unpack("<I", buff.read(4))[0], ResValue(buff, self.parent))
             )
+
+        log.info(
+            " -> [ResTableMapEntry] start={},end={},rsize={}".format(
+                self.start, buff.get_idx(),  buff.get_idx() - self.start
+            )
+        )
 
     def __repr__(self):
         return "<ARSCComplex idx='0x{:08x}' parent='{}' count='{}'>".format(
@@ -3035,7 +3142,7 @@ class ARSCComplex:
         )
 
 
-class ARSCResStringPoolRef:
+class ResValue:
     """
     This is actually a `Res_value`
     It holds information about the stored resource value
@@ -3049,11 +3156,26 @@ class ARSCResStringPoolRef:
 
         (self.size,) = unpack("<H", buff.read(2))
         (self.res0,) = unpack("<B", buff.read(1))
-        if self.res0 != 0:
-            raise ResParserError("res0 must be always zero!")
+        # if self.res0 != 0:
+        #     log.warning("res0 must be always zero!")
+        # raise ResParserError("res0 must be always zero!")
+        # NOTE 跳过，这个值一般是0，如果不是，说明 arsc 文件可能有异常。
+        # buff.read(1)
+
         self.data_type = unpack("<B", buff.read(1))[0]
         # data is interpreted according to data_type
         self.data = unpack("<I", buff.read(4))[0]
+
+        # NOTE 只能是8，不能是其他值
+        if self.size != 8:
+            log.warning(" -> [ResValue] size={}, 不是8，强制赋予8.".format(self.size))
+            self.size = 8
+
+        log.info(
+            "      -> [ResValue] start={},end={},size={},rsize={}".format(
+                self.start, buff.get_idx(), self.size, buff.get_idx() - self.start
+            )
+        )
 
     def get_data_value(self):
         return self.parent.stringpool_main.getString(self.data)

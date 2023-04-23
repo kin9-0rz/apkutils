@@ -1,5 +1,4 @@
 """Console script for apkutils."""
-import binascii
 import sys
 
 import click
@@ -14,7 +13,6 @@ from apkutils import APK, __version__, apkfile
 @click.version_option(__version__)
 def main():
     pass
-
 
 # TODO 增加解压命令
 @main.command()
@@ -43,7 +41,7 @@ def unzip(path, t, e, output):
 @click.argument("path")
 def manifest(path):
     """打印清单"""
-    apk = APK.from_file(path).parse_manifest().parse_arsc()
+    apk = APK.from_file(path).parse_resouce()
     manifest = apk.get_manifest()
     if manifest is None:
         print("Manifest is None!")
@@ -52,10 +50,11 @@ def manifest(path):
     sys.stdout.write(
         highlight(manifest, get_lexer_by_name("xml"), TerminalFormatter())
     )
-
-    print(apk.get_manifest_main_activities())
-    print(apk.app_name)
-
+    
+    print("\nPackage: {}".format(apk.get_package_name()))
+    print("Main Activities:")
+    for item in apk.get_manifest_main_activities():
+        print(" - {}".format(item))
 
 @main.command()
 @click.argument("path")
@@ -67,8 +66,11 @@ def manifest(path):
 )
 def arsc(path, res_type):
     """打印arsc"""
-    apk = APK.from_file(path).parse_arsc()
+    apk = APK.from_file(path).parse_resouce()
     arsc = apk.get_arsc()
+    if arsc is None:
+        print("ARSC解析失败")
+        return
 
     keys = arsc.packages.keys()
     if len(keys) == 0:
@@ -96,6 +98,7 @@ def arsc(path, res_type):
         data = arsc.get_strings_resources()
     else:
         data = arsc.get_string_resources(package)
+    # print(data.decode("utf-8"))
     sys.stdout.write(highlight(data, get_lexer_by_name("xml"), TerminalFormatter()))
 
 

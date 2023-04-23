@@ -13,3 +13,7 @@ apk._init_dex_methods()
 end = time.time()
 print(end - start)
 apk.close()
+
+
+# 建议使用 https://github.com/lief-project/LIEF
+# 性能上会更好一些
