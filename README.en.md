@@ -44,3 +44,8 @@ apk.close()
 with APK.from_file(file_path) as apk:
     apk.get_manifest()
 ```
+
+#### Credits
+
+- [Storyyeller/enjarify](https://github.com/Storyyeller/enjarify)
+- [androguard/androguard](https://github.com/androguard/androguard)

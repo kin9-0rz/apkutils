@@ -1,16 +1,15 @@
 import binascii
 import collections
-from enum import Enum
 import logging
 import re
 from collections import defaultdict
+from enum import Enum
 from struct import pack, unpack
 from xml.sax.saxutils import escape
 
 from lxml import etree
 
 from apkutils.axml import bytecode, public
-
 
 log = logging.getLogger("axml")
 log.setLevel(logging.CRITICAL)
@@ -155,7 +154,9 @@ def verify_chunk_header_size(ctype: int, header_size: int):
         if default_size < header_size:
             n = header_size - default_size
             log.warning(
-                "[Verify] header size {} 大于默认值 {}".format(header_size, default_size)
+                "[Verify] header size {} 大于默认值 {}".format(
+                    header_size, default_size
+                )
             )
             log.warning("[Verify] 头部后面可能存在多余的数据，数量为 {}".format(n))
             return n  # NOTE 需要根据这个值跳过填充数据
@@ -199,8 +200,11 @@ class ResChunkHeader:
 
         log.info(
             "[ResChunk] type={} start={}, header_size={}, size={}, end={}".format(
-                get_res_type(self._type), self.start, self.header_size, 
-                self._size, self.end
+                get_res_type(self._type),
+                self.start,
+                self.header_size,
+                self._size,
+                self.end,
             )
         )
 
@@ -691,7 +695,9 @@ class AXMLParser:
 
         # 解析AXML头，4个字节是类型，4个字节是文件大小
         try:
-            axml_header = ResChunkHeader(self.buff, expected_type=RES_XML_TYPE, force=True)  # noqa: E501
+            axml_header = ResChunkHeader(
+                self.buff, expected_type=RES_XML_TYPE, force=True
+            )  # noqa: E501
         except ResParserError as e:
             log.error("Error parsing first resource header: %s", e)
             self._valid = False
@@ -1609,7 +1615,9 @@ class ARSCParser:
         # More sanity checks...
         if self.header.header_size != 12:
             log.warning(
-                "header.header_size 不是12个字节，而是 {}.".format(self.header.header_size)
+                "header.header_size 不是12个字节，而是 {}.".format(
+                    self.header.header_size
+                )
             )
 
         if self.header.size > self.buff.size():
@@ -1629,8 +1637,10 @@ class ARSCParser:
 
         # The ResTable_header contains the packageCount, i.e. the number of ResTable_package
         self.packageCount = unpack("<I", self.buff.read(4))[0]
-        log.info("解析ARSC - ResTable_header.packageCount = {}".format(self.packageCount))
-        
+        log.info(
+            "解析ARSC - ResTable_header.packageCount = {}".format(self.packageCount)
+        )
+
         # Even more sanity checks...
         if self.packageCount < 1:
             log.warning("至少要有一个包!")
@@ -1770,7 +1780,9 @@ class ARSCParser:
                             a_res_type.config
                         )
 
-                        log.debug("a_res_type.entryCount = {}".format(a_res_type.entryCount))
+                        log.debug(
+                            "a_res_type.entryCount = {}".format(a_res_type.entryCount)
+                        )
                         entries = []
                         for i in range(0, a_res_type.entryCount):
                             current_package.mResId = (
@@ -1791,8 +1803,9 @@ class ARSCParser:
                                 break
 
                             if entry != -1:
-                                ate = ResTableEntry(pkg_chunk_header.end,self.buff, 
-                                                    res_id, pc)
+                                ate = ResTableEntry(
+                                    pkg_chunk_header.end, self.buff, res_id, pc
+                                )
                                 self.packages[package_name].append(ate)
                                 if ate.is_weak():
                                     # FIXME we are not sure how to implement the FLAG_WEAK!
@@ -1818,7 +1831,9 @@ class ARSCParser:
                     self.buff.set_idx(pkg_chunk_header.end)
             else:
                 # Unknown / not-handled chunk type
-                log.warning("非 RES_STRING_POOL_TYPE 和 RES_TABLE_PACKAGE_TYPE 类型的chunk")
+                log.warning(
+                    "非 RES_STRING_POOL_TYPE 和 RES_TABLE_PACKAGE_TYPE 类型的chunk"
+                )
                 log.warning("Unknown chunk type encountered: %s", res_header)
 
             log.info("move to the next resource chunk: {}".format(res_header.end))
@@ -2575,7 +2590,11 @@ class ResTablePackage:
         self.lastPublicKey = unpack("<I", buff.read(4))[0]
         self.mResId = self.id << 24
 
-        log.info("[ResTablePackage] start={}, rsize={}".format(self.start, buff.get_idx() - self.start))  # noqa: E501
+        log.info(
+            "[ResTablePackage] start={}, rsize={}".format(
+                self.start, buff.get_idx() - self.start
+            )
+        )  # noqa: E501
 
     def get_name(self):
         name = self.name.decode("utf-16", "replace")
@@ -2608,8 +2627,12 @@ class ResTableTypeSpec:
         for i in range(0, self.entryCount):
             self.typespec_entries.append(unpack("<I", buff.read(4))[0])
 
-        log.debug(" -> [ResTableTypeSpec] start={},end={},rsize={}".format(
-            self.start,buff.get_idx(),buff.get_idx()-self.start))
+        log.debug(
+            " -> [ResTableTypeSpec] start={},end={},rsize={}".format(
+                self.start, buff.get_idx(), buff.get_idx() - self.start
+            )
+        )
+
 
 class ResTableType:
     """
@@ -2647,7 +2670,9 @@ class ResTableType:
                 self.entryCount, chunk_header.start + self.entriesStart
             )
         )
-        log.info(" -> ResTableType.chunk_header.start + entriesStart = ResTableEntry的起始位置")  # noqa: E501
+        log.info(
+            " -> ResTableType.chunk_header.start + entriesStart = ResTableEntry的起始位置"
+        )  # noqa: E501
 
     def get_type(self):
         return self.parent.mTableStrings.getString(self.id - 1)
@@ -2686,8 +2711,7 @@ class ResTableConfig:
             cls.DEFAULT = ResTableConfig(None)
         return cls.DEFAULT
 
-    def __init__(self, buff:bytecode.BuffHandle=None, **kwargs):
-
+    def __init__(self, buff: bytecode.BuffHandle = None, **kwargs):
         self.input = (
             ((kwargs.pop("keyboard", 0) & 0xFF) << 0)
             + ((kwargs.pop("navigation", 0) & 0xFF) << 8)
@@ -2715,7 +2739,7 @@ class ResTableConfig:
 
         self.screenConfig2 = 0
         self.exceedingSize = 0
-        
+
         if buff is not None:
             self.start = buff.get_idx()
 
@@ -2749,7 +2773,7 @@ class ResTableConfig:
                 # uint16_t screenWidth
                 # uint16_t screenHeight
                 self.screenSize = unpack("<I", buff.read(4))[0]
-            
+
             if self.size > 28:
                 # struct of
                 # uint16_t sdkVersion
@@ -2797,7 +2821,7 @@ class ResTableConfig:
                 + ((kwargs.pop("touchscreen", 0) & 0xFF) << 8)
                 + ((kwargs.pop("density", 0) & 0xFFFF) << 16)
             )
-        
+
         log.info(
             " -> [ResTableType][ResTableConfig] start={},end={},size={},rsize={}".format(  # noqa: E501
                 self.start, buff.get_idx(), self.size, buff.get_idx() - self.start
@@ -3042,7 +3066,11 @@ class ResTableEntry:
 
         log.info(
             " -> [ResTableEntry] flags={}, start={},end={},size={},rsize={}".format(
-                self.flags, self.start, buff.get_idx(), self.size, buff.get_idx() - self.start  # noqa: E501
+                self.flags,
+                self.start,
+                buff.get_idx(),
+                self.size,
+                buff.get_idx() - self.start,  # noqa: E501
             )
         )
 
@@ -3050,7 +3078,7 @@ class ResTableEntry:
         if self.size == 0xFFFF:
             self.size = 8
             log.info("  -> [ResTableEntry] fix size = 8")
-        
+
         # NOTE 注意，强制修复，效果未知
         if self.flags > 7:
             self.flags = 0
@@ -3132,7 +3160,7 @@ class ResTableMapEntry:
 
         log.info(
             " -> [ResTableMapEntry] start={},end={},rsize={}".format(
-                self.start, buff.get_idx(),  buff.get_idx() - self.start
+                self.start, buff.get_idx(), buff.get_idx() - self.start
             )
         )
 

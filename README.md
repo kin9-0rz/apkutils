@@ -48,3 +48,9 @@ with APK.from_file(file_path) as apk:
 #### 备注
 
 从 `1.3.0` 开始，默认不解析清单、不解析图标、不解析Dex，而是按需解析。
+
+
+#### 感谢
+
+- [Storyyeller/enjarify](https://github.com/Storyyeller/enjarify)
+- [androguard/androguard](https://github.com/androguard/androguard)

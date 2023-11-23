@@ -1,14 +1,15 @@
 import os
 import zipfile
 
-from apkutils.axml import ARSCParser
 from bs4 import BeautifulSoup
+
+from apkutils.axml import ARSCParser
 
 
 class TestARSC(object):
     def setup_class(self):
         file_path = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "fixtures", "test")
+            os.path.join(os.path.dirname(__file__), "fixtures", "test.zip")
         )
 
         with zipfile.ZipFile(file_path, mode="r") as zf:

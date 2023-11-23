@@ -5,7 +5,7 @@ from apkutils import APK
 
 def test_get_dex_strings_refx():
     file_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "fixtures", "test")
+        os.path.join(os.path.dirname(__file__), "fixtures", "test.zip")
     )
 
     with APK.from_file(file_path).parse_dex() as apk:
@@ -16,6 +16,7 @@ def test_get_dex_strings_refx():
                     assert clsname == "com/example/hellojni/MainActivity"
                     assert mtdname == "<clinit>"
                     # print(clsname, mtdname, result[clsname][mtdname])
+
 
 def test_get_dex_strings_refx2():
     file_path = os.path.abspath(
