@@ -6,7 +6,7 @@ Read and write APK files.
 * 根据实际情况修改。
 """
 import binascii
-import importlib.util
+import importlib
 import io
 import os
 import re
@@ -1371,7 +1371,7 @@ class ZipFile:
             else:
                 fname_str = fname.decode("cp437")
 
-            # TODO 存在编码问题
+            # TODO 存在编码问题 (need samples)
             # if fname_str != zinfo.orig_filename:
             #     raise BadZipFile(
             #         "File name in directory %r and header %r differ."
