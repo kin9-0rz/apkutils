@@ -67,7 +67,7 @@ class APK:
         cls.afile = apkfile.ZipFile(_io, "r")
         return cls()
 
-    def parse_resouce(self):
+    def parse_resource(self):
         """解析资源文件，包括AndroidManifest.xml、resource.arsc，图标、应用名
 
         Returns:
@@ -78,11 +78,11 @@ class APK:
         self._init_app_icons()
         self._init_app_name()
         return self
-    
+
     def parse_dex(self):
         self._init_dex_strings()
         return self
-    
+
     def __enter__(self):
         return self
 
@@ -574,7 +574,7 @@ class APK:
         """仅获取Appliction的图标"""
         if self.arsc is None:
             return
-        
+
         self._string_res_app_name = ""
 
         files = self.get_subfiles()
@@ -617,7 +617,7 @@ class APK:
     def _init_app_name(self):
         if self.arsc is None:
             return
-        
+
         try:
             soup = BeautifulSoup(
                 self.arsc.get_string_resources(self._package_name), "lxml-xml"
