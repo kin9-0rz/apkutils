@@ -662,7 +662,7 @@ class APK:
     def get_certs(self, _hash="md5"):
         if _hash not in self._certs:
             self._init_certs(_hash)
-        return self._certs[_hash]
+        return self._certs.get(_hash, [])
 
     def _init_certs(self, _hash):
         try:

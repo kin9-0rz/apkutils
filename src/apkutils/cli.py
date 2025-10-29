@@ -153,6 +153,28 @@ def certs(path):
 
 @main.command()
 @click.argument("path")
+def packages(path):
+    """列出所有的包"""
+    apk = APK.from_file(path).parse_dex()
+    classes = apk.get_dex_classes()
+    if classes is None:
+        return
+
+    pkgs = set()
+    for item in classes:
+        item = item.decode("utf-8", errors="ignore")
+        arr = item.split("/")
+        if len(arr) > 2:
+            pkgs.add(".".join(arr[:2]))
+        else:
+            pkgs.add(".".join(arr[:-1]))
+
+    for item in sorted(pkgs):
+        print(item)
+
+
+@main.command()
+@click.argument("path")
 @click.option(
     "-m",
     "--method",
