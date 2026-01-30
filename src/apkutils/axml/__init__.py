@@ -8,6 +8,7 @@ from struct import pack, unpack
 from xml.sax.saxutils import escape
 
 from lxml import etree
+import lxml
 
 from apkutils.axml import bytecode, public
 
@@ -600,13 +601,13 @@ class ResStringPoolHeader:
 
         # These are true asserts, as the size should never be less than the values
         if sizeof_char == 1:
-            assert (
-                length <= 0x7FFF
-            ), "length of UTF-8 string is too large! At offset={}".format(offset)
+            assert length <= 0x7FFF, (
+                "length of UTF-8 string is too large! At offset={}".format(offset)
+            )
         else:
-            assert (
-                length <= 0x7FFFFFFF
-            ), "length of UTF-16 string is too large!  At offset={}".format(offset)
+            assert length <= 0x7FFFFFFF, (
+                "length of UTF-16 string is too large!  At offset={}".format(offset)
+            )
 
         return length, size
 
@@ -1267,9 +1268,9 @@ class AXMLPrinter:
                         print("Can not attach comment without root!")
                         print("Comment: ", comment)
                     else:
-                        cur[-1].append(etree.Comment(comment))
+                        cur[-1].append(lxml.etree.Comment(comment))
 
-                elem = etree.Element(tag, nsmap=self.axml.nsmap)
+                elem = lxml.etree.Element(tag, nsmap=self.axml.nsmap)
                 for i in range(self.axml.getAttributeCount()):
                     uri = self._print_namespace(self.axml.getAttributeNamespace(i))
                     attribute_name = self.axml.getAttributeName(i)

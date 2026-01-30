@@ -6,6 +6,7 @@ import traceback
 import pyftype
 from bs4 import BeautifulSoup
 from lxml import etree
+import lxml
 
 from apkutils import apkfile
 from apkutils.axml import ARSCParser, AXMLPrinter
@@ -53,6 +54,7 @@ class APK:
         self._app_name = None
         self._application_icon_addr = None
         self._string_res_app_name: str = ""
+        self._main_activities = []
         """应用名的KEY"""
 
     @classmethod
@@ -110,7 +112,7 @@ class APK:
                     self.axml = AXMLPrinter(data, True).get_xml_obj()
                     if self.axml is None:
                         return
-                    buff = etree.tostring(
+                    buff = lxml.etree.tostring(
                         self.axml, pretty_print=True, encoding="utf-8"
                     )
                     if buff is None:
