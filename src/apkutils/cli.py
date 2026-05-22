@@ -15,7 +15,6 @@ def main():
     pass
 
 
-# TODO 增加解压命令
 @main.command()
 @click.argument("path", type=click.Path(exists=True))
 # @click.option("-l", is_flag=True, help="Show listing of a zipfile")
@@ -36,6 +35,26 @@ def unzip(path, t, e, output):
     else:
         with apkfile.ZipFile(path, "r") as zf:
             zf.printdir()
+
+
+@main.command()
+@click.argument("path")
+def info(path):
+    """打印清单"""
+    apk = APK.from_file(path).parse_resource()
+    print(f"包  名: {apk.package_name}")
+    print(f"应用名: {apk.app_name}")
+    print(f"版本号: {apk.version_name}")
+    print(f"minSdk: {apk.min_sdk_version}")
+    print(f"targetSdk: {apk.target_sdk_version}")
+    if apk.max_sdk_version != 0xFF:
+        print(f"maxSdk: {apk.max_sdk_version}")
+    certs = apk.get_certs()
+    num = len(certs)
+    if num > 0:
+        for item in certs:
+            print(f"证书: {item[0]}, {item[1]}")
+    apk.close()
 
 
 @main.command()
@@ -129,6 +148,28 @@ def certs(path):
     """打印证书"""
     apk = APK.from_file(path)
     for item in apk.get_certs():
+        print(item)
+
+
+@main.command()
+@click.argument("path")
+def packages(path):
+    """列出所有的包"""
+    apk = APK.from_file(path).parse_dex()
+    classes = apk.get_dex_classes()
+    if classes is None:
+        return
+
+    pkgs = set()
+    for item in classes:
+        item = item.decode("utf-8", errors="ignore")
+        arr = item.split("/")
+        if len(arr) > 2:
+            pkgs.add(".".join(arr[:2]))
+        else:
+            pkgs.add(".".join(arr[:-1]))
+
+    for item in sorted(pkgs):
         print(item)
 
 

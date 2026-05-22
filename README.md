@@ -34,7 +34,7 @@ Commands:
 ```python
 from apkutils import APK
 
-# NOTE 按需解析，这里仅仅解析清单，不解析dex、图标。
+# NOTE: 获取清单、arsc、应用名、图标，必须要使用 parse_resource
 apk = APK.from_file(file_path).parse_resource()
 manifest = apk.get_manifest()
 apk.close()

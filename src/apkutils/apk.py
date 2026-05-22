@@ -1,12 +1,12 @@
 import binascii
 import io
-import logging
 import re
 import traceback
 
 import pyftype
 from bs4 import BeautifulSoup
 from lxml import etree
+import lxml
 
 from apkutils import apkfile
 from apkutils.axml import ARSCParser, AXMLPrinter
@@ -38,7 +38,7 @@ class APK:
         self._dex_strings = []  # 字符串
         self._dex_hex_strings = None  # 16进制字符串
         self.opcodes = None
-        self.certs = {}
+        self._certs = {}
         self.arsc = None
         self.strings_refx: dict | None = None
         self._app_icons: list | None = None
@@ -46,9 +46,16 @@ class APK:
         self.trees = None  # 代码结构序列字典
         self._classes = None
         self._methods_refx = {}
-        self._package_name = ""  # 包名
+        self._package_name: str = ""  # 包名
+        self._version_name = ""
+        self._min_sdk_version = 1
+        self._target_sdk_version = 1
+        self._max_sdk_version = 0xFF
         self._app_name = None
         self._application_icon_addr = None
+        self._string_res_app_name: str = ""
+        self._main_activities = []
+        """应用名的KEY"""
 
     @classmethod
     def from_file(cls, path):
@@ -72,8 +79,8 @@ class APK:
         """
         self._init_manifest()
         self._init_arsc()
-        self._init_app_icons()
-        self._init_app_name()
+        self._init_app_icons()  #  依赖 mainfest, arsc
+        self._init_app_name()  # 依赖 manifest, arsc, app_icons
         return self
 
     def parse_dex(self):
@@ -105,7 +112,7 @@ class APK:
                     self.axml = AXMLPrinter(data, True).get_xml_obj()
                     if self.axml is None:
                         return
-                    buff = etree.tostring(
+                    buff = lxml.etree.tostring(
                         self.axml, pretty_print=True, encoding="utf-8"
                     )
                     if buff is None:
@@ -189,6 +196,22 @@ class APK:
 
     def get_manifest_application(self):
         return self._application
+
+    @property
+    def version_name(self):
+        return self._version_name
+
+    @property
+    def min_sdk_version(self):
+        return self._min_sdk_version
+
+    @property
+    def target_sdk_version(self):
+        return self._target_sdk_version
+
+    @property
+    def max_sdk_version(self):
+        return self._max_sdk_version
 
     # * -------------------------- DEX --------------------------------------
 
@@ -558,20 +581,16 @@ class APK:
             if ARSC_NAME in self.afile.namelist():
                 data = self.afile.read(ARSC_NAME)
                 self.arsc = ARSCParser(data)
-                self.package = self.arsc.get_packages_names()[0]
+                # FIXME: 这个包名可能与清单的不一样
+                # self._package_name = self.arsc.get_packages_names()[0]
         except Exception as e:
             print(self.apk_path)
             print(e)
 
     def get_arsc(self):
-        if self.arsc is None:
-            self._init_arsc()
         return self.arsc
 
     def get_app_icons(self):
-        if self._app_icons is None:
-            self._init_app_icons()
-
         return self._app_icons
 
     def _init_app_icons(self):
@@ -597,6 +616,7 @@ class APK:
             public_tag = soup.select_one('public[id="{}"]'.format(addr))
 
             if public_tag is None:
+                print(f"图标地址错误: {addr}")
                 return
 
             icon_name = public_tag.get("name")
@@ -612,15 +632,16 @@ class APK:
             )
             if public_tag is None:
                 return
-            self._string_res_app_name = public_tag.get("name")
+            r = public_tag.get("name", "")
+            if isinstance(r, list):
+                r = ",".join(r)
+            self._string_res_app_name = r
         except Exception as e:
             print(self.apk_path)
             print(e)
 
     @property
     def app_name(self):
-        if self._app_name is None:
-            self._init_app_name()
         return self._app_name
 
     def _init_app_name(self):
@@ -641,9 +662,9 @@ class APK:
             print(e)
 
     def get_certs(self, _hash="md5"):
-        if _hash not in self.certs:
+        if _hash not in self._certs:
             self._init_certs(_hash)
-        return self.certs[_hash]
+        return self._certs.get(_hash, [])
 
     def _init_certs(self, _hash):
         try:
@@ -654,7 +675,7 @@ class APK:
                     mine = kind.EXTENSION
                     if mine != "txt":
                         cert = Certificate(data, _hash=_hash)
-                        self.certs[_hash] = cert.get()
+                        self._certs[_hash] = cert.get()
         except Exception as e:
             print(self.apk_path)
             print(e)

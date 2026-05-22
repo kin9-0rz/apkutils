@@ -1,21 +1,10 @@
 [project]
 name = "apkutils"
-version = "1.5.10"
+version = "2.0.5"
 description = "一个APK解析库"
-authors = [{ name = "kin9-0rz", email = "kin9-0rz@outlook.com" }]
 readme = "README.md"
-classifiers = [
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
-  "License :: OSI Approved :: MIT License",
-  "Topic :: Software Development :: Libraries :: Python Modules",
-  "Natural Language :: Chinese (Simplified)",
-  "Development Status :: 3 - Alpha",
-]
+authors = [{ name = "kin9-0rz", email = "kin9-0rz@outlook.com" }]
+requires-python = ">=3.10"
 dependencies = [
   "Pygments>=2.12.0,<3.0.0",
   "beautifulsoup4>=4.10.0,<5.0.0",
@@ -26,7 +15,6 @@ dependencies = [
   "pyftype>=1.2.4,<2.0.0",
   "colorlog>=6.7.0,<7.0.0",
 ]
-requires-python = ">=3.8,<4.0.0"
 
 [project.urls]
 Repository = "https://gitee.com/kin9-0rz/apkutils"
@@ -34,19 +22,9 @@ Repository = "https://gitee.com/kin9-0rz/apkutils"
 [project.scripts]
 apkutils = 'apkutils.cli:main'
 
-[tool]
-
-[tool.rye]
-managed = true
-dev-dependencies = ["pytest>=8.3.3", "pytest-benchmark>=4.0.0"]
-
-[tool.hatch]
-[tool.hatch.metadata]
-allow-direct-references = true
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/apkutils"]
-
 [build-system]
-build-backend = "hatchling.build"
-requires = ["hatchling"]
+requires = ["uv_build>=0.9.17,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["pytest>=9.0.2", "pytest-benchmark>=5.2.3"]
