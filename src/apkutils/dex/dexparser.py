@@ -325,7 +325,7 @@ class DexFile:
 
         if flag:  # parse dex class
             defs = self.class_defs
-            self.classes = []
+            self.classes: list[DexClass] = []
             for i in range(defs.size):
                 self.classes.append(DexClass(self, defs.off, i))
 

@@ -1,4 +1,5 @@
 import binascii
+from functools import lru_cache
 import io
 import re
 import traceback
@@ -11,7 +12,7 @@ import lxml
 from apkutils import apkfile
 from apkutils.axml import ARSCParser, AXMLPrinter
 from apkutils.cert import Certificate
-from apkutils.dex.dexparser import DexFile
+from apkutils.dex.dexparser import DexClass, DexFile
 
 # 6E invoke-virtual 110
 # 6F invoke-supper
@@ -32,11 +33,11 @@ NS_ANDROID = "{{{}}}".format(NS_ANDROID_URI)  # Namespace as used by etree
 class APK:
     def __init__(self):
         self.apk_path = None
-        self.dex_files = []
+        self.dex_files: list[DexFile] = []
         self.children = []
         self.manifest: str = ""
         self._dex_strings = []  # 字符串
-        self._dex_hex_strings = None  # 16进制字符串
+        self._dex_hex_strings = []  # 16进制字符串
         self.opcodes = None
         self._certs = {}
         self.arsc = None
@@ -59,8 +60,9 @@ class APK:
 
     @classmethod
     def from_file(cls, path):
-        cls.apk_path = path
-        return cls.from_io(path)
+        clazz = cls.from_io(path)
+        clazz.apk_path = path
+        return clazz
 
     @classmethod
     def from_bytes(cls, _bytes):
@@ -68,8 +70,9 @@ class APK:
 
     @classmethod
     def from_io(cls, _io):
-        cls.afile = apkfile.ZipFile(_io, "r")
-        return cls()
+        clazz = cls()
+        clazz.afile = apkfile.ZipFile(_io, "r")
+        return clazz 
 
     def parse_resource(self):
         """解析资源文件，包括AndroidManifest.xml、resource.arsc，图标、应用名
@@ -221,13 +224,21 @@ class APK:
         return self._classes
 
     def _init_classes(self):
-        classes = set()
+        """初始化所有 DEX 文件中的类名集合。
+        
+        延迟初始化 dex_files（如果尚未初始化），
+        然后遍历所有 DEX 文件收集类名并排序返回。
+        """
+        if self._classes is not None:
+            return  # 避免重复初始化
+        
         if not self.dex_files:
             self._init_dex_files()
-
+        
+        classes = set()
         for dex_file in self.dex_files:
-            for dexClass in dex_file.classes:
-                classes.add(dexClass.name)
+            classes.update(dex_class.name for dex_class in dex_file.classes)
+        
         self._classes = sorted(classes)
 
     def get_dex_methods(self):
@@ -254,13 +265,13 @@ class APK:
         if not self.dex_files:
             self._init_dex_files()
 
-        def process_dex_class(dexClass):
+        def process_dex_class(dc : DexClass):
             try:
-                dexClass.parseData()
+                dc.parseData()
             except IndexError as e:
                 print(e)
                 return
-            for method in dexClass.data.methods:
+            for method in dc.data.methods:
                 clsname = method.id.cname.decode()
                 mtdname = method.id.name.decode()
                 methods.add(clsname + "/" + mtdname)
