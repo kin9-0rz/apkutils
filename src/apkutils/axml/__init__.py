@@ -1555,6 +1555,62 @@ TOUCHSCREEN_STYLUS = ACONFIGURATION_TOUCHSCREEN_STYLUS
 TOUCHSCREEN_FINGER = ACONFIGURATION_TOUCHSCREEN_FINGER
 
 
+# 一条结构化资源记录。`kind` 是资源类型（string/drawable/dimen/…）：
+# 对 "public" 查询它是该条目的真实类型，其它查询则等于查询的 kind。
+# `value` 是已格式化的值（"1.0dip"、"#ff00ff00"、"true"…），`id` 仅 public 有。
+Resource = collections.namedtuple("Resource", ["kind", "name", "value", "id"])
+
+
+def _format_public(res):
+    return '<public type="{}" name="{}" id="0x{:08x}" />\n'.format(
+        res.kind, res.name, res.id
+    )
+
+
+def _format_string(res):
+    value = res.value
+    if any(map(value.__contains__, "<&>")):
+        value = "<![CDATA[%s]]>" % value
+    return '<string name="{}">{}</string>\n'.format(res.name, value)
+
+
+def _format_id(res):
+    if res.value is None:
+        return '<item type="id" name="%s"/>\n' % res.name
+    return '<item type="id" name="{}">{}</item>\n'.format(res.name, escape(res.value))
+
+
+def _format_bool(res):
+    if res.value is None:
+        log.warning("[get_bool_resources][bool] item size=1")
+        return '<bool name="{}">{}</bool>\n'.format(res.name, "false")
+    return '<bool name="{}">{}</bool>\n'.format(res.name, res.value)
+
+
+def _format_integer(res):
+    return '<integer name="{}">{}</integer>\n'.format(res.name, res.value)
+
+
+def _format_color(res):
+    return '<color name="{}">{}</color>\n'.format(res.name, res.value)
+
+
+def _format_dimen(res):
+    return '<dimen name="{}">{}</dimen>\n'.format(res.name, res.value)
+
+
+# kind -> 把一条 Resource 渲染成一行 XML。7 个资源类型共用同一个发射器。
+_FLAT_FORMATTERS = {
+    "public": _format_public,
+    "string": _format_string,
+    "id": _format_id,
+    "bool": _format_bool,
+    "integer": _format_integer,
+    "color": _format_color,
+    "dimen": _format_dimen,
+}
+
+
 class ARSCParser:
     """
     Parser for resource.arsc files
@@ -1988,6 +2044,46 @@ class ARSCParser:
         self._analyse()
         return list(self.values[package_name][locale].keys())
 
+    def get_resources(self, package_name, kind, locale="\x00\x00"):
+        """
+        结构化的资源记录列表。
+
+        这是 ARSC 的 seam：XML 输出（``get_*_resources``）与
+        ``apkutils._resources`` 都从这里读结构化数据，
+        不再需要"先渲染成 XML 再用 BeautifulSoup 解析回来"。
+
+        :param package_name: the package name to get the resources for
+        :param kind: ``public`` / ``string`` / ``id`` / ``bool`` /
+            ``integer`` / ``color`` / ``dimen``
+        :param locale: the locale to get the resources for (default: '\x00\x00')
+        """
+        self._analyse()
+
+        try:
+            entries = self.values[package_name][locale][kind]
+        except KeyError:
+            return []
+
+        if kind == "public":
+            return [Resource(i[0], i[1], None, i[2]) for i in entries]
+
+        return [
+            Resource(kind, i[0], i[1] if len(i) > 1 else None, None) for i in entries
+        ]
+
+    def _emit_resources(self, package_name, kind, locale="\x00\x00"):
+        """把 ``get_resources`` 的记录渲染成既有格式的 XML bytes。"""
+        buff = '<?xml version="1.0" encoding="utf-8"?>\n'
+        buff += "<resources>\n"
+
+        formatter = _FLAT_FORMATTERS[kind]
+        for res in self.get_resources(package_name, kind, locale):
+            buff += formatter(res)
+
+        buff += "</resources>\n"
+
+        return buff.encode("utf-8")
+
     def get_public_resources(self, package_name, locale="\x00\x00"):
         """
         Get the XML (as string) of all resources of type 'public'.
@@ -1997,23 +2093,7 @@ class ARSCParser:
         :param package_name: the package name to get the resources for
         :param locale: the locale to get the resources for (default: '\x00\x00')
         """
-
-        self._analyse()
-
-        buff = '<?xml version="1.0" encoding="utf-8"?>\n'
-        buff += "<resources>\n"
-
-        try:
-            for i in self.values[package_name][locale]["public"]:
-                buff += '<public type="{}" name="{}" id="0x{:08x}" />\n'.format(
-                    i[0], i[1], i[2]
-                )
-        except KeyError:
-            pass
-
-        buff += "</resources>\n"
-
-        return buff.encode("utf-8")
+        return self._emit_resources(package_name, "public", locale)
 
     def get_string_resources(self, package_name, locale="\x00\x00"):
         """
@@ -2025,24 +2105,7 @@ class ARSCParser:
         :param package_name: the package name to get the resources for
         :param locale: the locale to get the resources for (default: '\x00\x00')
         """
-        self._analyse()
-
-        buff = '<?xml version="1.0" encoding="utf-8"?>\n'
-        buff += "<resources>\n"
-
-        try:
-            for i in self.values[package_name][locale]["string"]:
-                if any(map(i[1].__contains__, "<&>")):
-                    value = "<![CDATA[%s]]>" % i[1]
-                else:
-                    value = i[1]
-                buff += '<string name="{}">{}</string>\n'.format(i[0], value)
-        except KeyError:
-            pass
-
-        buff += "</resources>\n"
-
-        return buff.encode("utf-8")
+        return self._emit_resources(package_name, "string", locale)
 
     def get_strings_resources(self):
         """
@@ -2089,25 +2152,7 @@ class ARSCParser:
         :param package_name: the package name to get the resources for
         :param locale: the locale to get the resources for (default: '\x00\x00')
         """
-        self._analyse()
-
-        buff = '<?xml version="1.0" encoding="utf-8"?>\n'
-        buff += "<resources>\n"
-
-        try:
-            for i in self.values[package_name][locale]["id"]:
-                if len(i) == 1:
-                    buff += '<item type="id" name="%s"/>\n' % (i[0])
-                else:
-                    buff += '<item type="id" name="{}">{}</item>\n'.format(
-                        i[0], escape(i[1])
-                    )
-        except KeyError:
-            pass
-
-        buff += "</resources>\n"
-
-        return buff.encode("utf-8")
+        return self._emit_resources(package_name, "id", locale)
 
     def get_bool_resources(self, package_name, locale="\x00\x00"):
         """
@@ -2119,24 +2164,7 @@ class ARSCParser:
         :param package_name: the package name to get the resources for
         :param locale: the locale to get the resources for (default: '\x00\x00')
         """
-        self._analyse()
-
-        buff = '<?xml version="1.0" encoding="utf-8"?>\n'
-        buff += "<resources>\n"
-
-        try:
-            for i in self.values[package_name][locale]["bool"]:
-                if len(i) == 1:
-                    log.warning("[get_bool_resources][bool] item size=1")
-                    buff += '<bool name="{}">{}</bool>\n'.format(i[0], "false")
-                else:
-                    buff += '<bool name="{}">{}</bool>\n'.format(i[0], i[1])
-        except KeyError:
-            pass
-
-        buff += "</resources>\n"
-
-        return buff.encode("utf-8")
+        return self._emit_resources(package_name, "bool", locale)
 
     def get_integer_resources(self, package_name, locale="\x00\x00"):
         """
@@ -2148,20 +2176,7 @@ class ARSCParser:
         :param package_name: the package name to get the resources for
         :param locale: the locale to get the resources for (default: '\x00\x00')
         """
-        self._analyse()
-
-        buff = '<?xml version="1.0" encoding="utf-8"?>\n'
-        buff += "<resources>\n"
-
-        try:
-            for i in self.values[package_name][locale]["integer"]:
-                buff += '<integer name="{}">{}</integer>\n'.format(i[0], i[1])
-        except KeyError:
-            pass
-
-        buff += "</resources>\n"
-
-        return buff.encode("utf-8")
+        return self._emit_resources(package_name, "integer", locale)
 
     def get_color_resources(self, package_name, locale="\x00\x00"):
         """
@@ -2173,20 +2188,7 @@ class ARSCParser:
         :param package_name: the package name to get the resources for
         :param locale: the locale to get the resources for (default: '\x00\x00')
         """
-        self._analyse()
-
-        buff = '<?xml version="1.0" encoding="utf-8"?>\n'
-        buff += "<resources>\n"
-
-        try:
-            for i in self.values[package_name][locale]["color"]:
-                buff += '<color name="{}">{}</color>\n'.format(i[0], i[1])
-        except KeyError:
-            pass
-
-        buff += "</resources>\n"
-
-        return buff.encode("utf-8")
+        return self._emit_resources(package_name, "color", locale)
 
     def get_dimen_resources(self, package_name, locale="\x00\x00"):
         """
@@ -2198,20 +2200,7 @@ class ARSCParser:
         :param package_name: the package name to get the resources for
         :param locale: the locale to get the resources for (default: '\x00\x00')
         """
-        self._analyse()
-
-        buff = '<?xml version="1.0" encoding="utf-8"?>\n'
-        buff += "<resources>\n"
-
-        try:
-            for i in self.values[package_name][locale]["dimen"]:
-                buff += '<dimen name="{}">{}</dimen>\n'.format(i[0], i[1])
-        except KeyError:
-            pass
-
-        buff += "</resources>\n"
-
-        return buff.encode("utf-8")
+        return self._emit_resources(package_name, "dimen", locale)
 
     def get_id(self, package_name, rid, locale="\x00\x00"):
         """
