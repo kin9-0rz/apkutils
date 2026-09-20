@@ -9,7 +9,7 @@ file_path = os.path.abspath(
 apk = APK.from_file(file_path).parse_dex()
 start = time.time()
 # 获取所有的dex方法，非常耗时，25秒。
-apk._init_dex_methods()
+apk.get_dex_methods()
 end = time.time()
 print(end - start)
 apk.close()

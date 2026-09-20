@@ -1,6 +1,7 @@
 import os
+import zipfile
 
-from apkutils import APK
+from apkutils._dex import DexReader
 
 FIXTURES = os.path.dirname(os.path.abspath(__file__)) + "/fixtures"
 
@@ -22,14 +23,15 @@ def test_0001(benchmark):
 
 
 def test_apk(benchmark):
-    file_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "fixtures", "youtube.zip")
-    )
-    apk = APK.from_file(file_path)
+    file_path = os.path.join(FIXTURES, "youtube.zip")
+    with zipfile.ZipFile(file_path) as zf:
+        blobs = [
+            zf.read(name)
+            for name in zf.namelist()
+            if name.startswith("classes") and name.endswith(".dex")
+        ]
 
     @benchmark
     def do():
-        apk._init_dex_methods()
-
-    apk.close()
+        DexReader(blobs).strings_refx_index()
 

@@ -1,6 +1,13 @@
+import io
 import os
+import zipfile
+
+import pytest
 
 from apkutils import APK
+from apkutils._dex import DexError
+from apkutils._manifest import ManifestError
+from apkutils._resources import ResourceTableError
 
 
 class TestAPK(object):
@@ -49,3 +56,67 @@ class TestAPK(object):
 
     def test_app_name(self):
         assert self.apk.app_name == "hellojni"
+
+
+def test_instances_do_not_share_archive():
+    # 先打开 A、再打开 B，随后读 A 必须仍读到 A 自己的归档。
+    # 旧实现把 ZipFile 存在类属性上，A 会读到 B 的包名。
+    fixtures = os.path.abspath(os.path.join(os.path.dirname(__file__), "fixtures"))
+    apk_a = APK.from_file(os.path.join(fixtures, "test.zip"))
+    apk_b = APK.from_file(os.path.join(fixtures, "test_am_0908.zip"))
+    try:
+        assert apk_a.parse_resource().get_package_name() == "com.example.hellojni"
+        assert (
+            apk_b.parse_resource().get_package_name()
+            == "bsp.yzxnk.qwolcp.ZHQ2017_001"
+        )
+    finally:
+        apk_a.close()
+        apk_b.close()
+
+
+def _apk_bytes(files: dict) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        for name, data in files.items():
+            zf.writestr(name, data)
+    return buf.getvalue()
+
+
+def test_default_swallows_manifest_error():
+    data = _apk_bytes({"AndroidManifest.xml": b"not an axml"})
+    with APK.from_bytes(data) as apk:
+        assert apk.parse_resource().get_manifest() == ""
+
+
+def test_strict_surfaces_manifest_error():
+    data = _apk_bytes({"AndroidManifest.xml": b"not an axml"})
+    with APK.from_bytes(data, strict=True) as apk:
+        with pytest.raises(ManifestError):
+            apk.parse_resource()
+
+
+def test_default_swallows_resource_error():
+    data = _apk_bytes({"resources.arsc": b"not an arsc"})
+    with APK.from_bytes(data) as apk:
+        assert apk.parse_resource().get_arsc() is None
+
+
+def test_strict_surfaces_resource_error():
+    data = _apk_bytes({"resources.arsc": b"not an arsc"})
+    with APK.from_bytes(data, strict=True) as apk:
+        with pytest.raises(ResourceTableError):
+            apk.parse_resource()
+
+
+def test_default_swallows_dex_error():
+    data = _apk_bytes({"classes.dex": b"dex\n035\x00"})
+    with APK.from_bytes(data) as apk:
+        assert apk.parse_dex().get_dex_strings() == []
+
+
+def test_strict_surfaces_dex_error():
+    data = _apk_bytes({"classes.dex": b"dex\n035\x00"})
+    with APK.from_bytes(data, strict=True) as apk:
+        with pytest.raises(DexError):
+            apk.parse_dex()
