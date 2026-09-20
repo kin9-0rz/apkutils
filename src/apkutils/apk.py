@@ -1,5 +1,6 @@
+import dataclasses
 import io
-import traceback
+import logging
 
 import pyftype
 
@@ -17,8 +18,19 @@ from apkutils._metadata import AppMetadata, AppMetadataError
 from apkutils._resources import ARSC_NAME, ResourceTable, ResourceTableError
 from apkutils._subfiles import Subfiles
 
+log = logging.getLogger("apkutils")
+
 NS_ANDROID_URI = "http://schemas.android.com/apk/res/android"
 NS_ANDROID = "{{{}}}".format(NS_ANDROID_URI)  # Namespace as used by etree
+
+
+@dataclasses.dataclass(frozen=True)
+class PartError:
+    """一次解析失败：哪个部分、哪个文件（若有）、原始异常。"""
+
+    part: str
+    error: Exception
+    name: str | None = None
 
 
 class APK:
@@ -26,10 +38,12 @@ class APK:
         self.apk_path = None
         self.afile = None
         self.strict = strict
+        self.errors: list[PartError] = []
         self.children = []
         self.manifest: str = ""
         self.axml = None
         self._manifest = ManifestReader()
+        self._manifest_loaded = False
         self._resources = ResourceTable()
         self._dex = None
         self._certs = {}
@@ -77,30 +91,54 @@ class APK:
         self.close()
 
     def close(self):
-        self.afile.close()
+        if self.afile is not None:
+            self.afile.close()
+
+    # * -------------------------- 失败记录 ----------------------------------
+
+    def _fail(self, part, error, name=None, summary=None):
+        """记下一次失败。
+
+        默认模式：只记进 ``self.errors`` 并写日志，不打断调用方。
+        ``strict=True``：向外抛出（``summary`` 用于把多个明细合成一个异常）。
+        """
+        self.errors.append(PartError(part, error, name))
+
+        if self.strict:
+            raise summary if summary is not None else error
+
+        log.warning(
+            "[%s] %s 解析失败: %s",
+            part,
+            name or self.apk_path,
+            error,
+            exc_info=error,
+        )
 
     # * -------------------------- 清单 --------------------------------------
 
     def get_manifest(self):
-        if self.manifest == "":
+        if self.manifest == "" and not self._manifest_loaded:
             self._init_manifest()
         return self.manifest
 
     def _init_manifest(self):
+        if self._manifest_loaded:
+            return
+        self._manifest_loaded = True
+
         data = None
         try:
             if MANIFEST_NAME in self.afile.namelist():
                 data = self.afile.read(MANIFEST_NAME)
-        except Exception:
-            traceback.print_exc()
+        except Exception as e:
+            self._fail("manifest", e)
             return
 
         try:
             self._manifest = ManifestReader(data)
-        except ManifestError:
-            if self.strict:
-                raise
-            traceback.print_exc()
+        except ManifestError as e:
+            self._fail("manifest", e)
             self._manifest = ManifestReader()
 
         self.axml = self._manifest.axml
@@ -154,16 +192,15 @@ class APK:
                 ):
                     blobs.append(data)
         except Exception as e:
-            print(self.apk_path)
-            print(e)
+            self._fail("dex", e)
+            return
 
         self._dex = DexReader(blobs)
+
         if self._dex.skipped:
-            if self.strict:
-                raise DexError("{} 个 DEX 解析失败".format(len(self._dex.skipped)))
+            summary = DexError("{} 个 DEX 解析失败".format(len(self._dex.skipped)))
             for err in self._dex.skipped:
-                print(self.apk_path)
-                print(err)
+                self._fail("dex", err, summary=summary)
 
     @property
     def dex_files(self):
@@ -219,9 +256,14 @@ class APK:
 
     def _init_children(self):
         try:
-            self.children = Subfiles(self.afile).items
-        except Exception:
-            traceback.print_exc()
+            subfiles = Subfiles(self.afile)
+        except Exception as e:
+            self._fail("subfiles", e)
+            return
+
+        self.children = subfiles.items
+        for name, err in subfiles.skipped:
+            self._fail("subfiles", err, name)
 
     def _init_arsc(self):
         data = None
@@ -229,17 +271,13 @@ class APK:
             if ARSC_NAME in self.afile.namelist():
                 data = self.afile.read(ARSC_NAME)
         except Exception as e:
-            print(self.apk_path)
-            print(e)
+            self._fail("arsc", e)
             return
 
         try:
             self._resources = ResourceTable(data)
-        except ResourceTableError:
-            if self.strict:
-                raise
-            print(self.apk_path)
-            traceback.print_exc()
+        except ResourceTableError as e:
+            self._fail("arsc", e)
             self._resources = ResourceTable()
 
         # FIXME: 这个包名可能与清单的不一样
@@ -258,10 +296,8 @@ class APK:
     def _init_app_metadata(self):
         try:
             meta = AppMetadata(self._manifest, self._resources, self.get_subfiles())
-        except AppMetadataError:
-            if self.strict:
-                raise
-            traceback.print_exc()
+        except AppMetadataError as e:
+            self._fail("metadata", e)
             return
 
         self._app_icons = meta.icons
@@ -280,13 +316,10 @@ class APK:
                 if name.startswith(META_INF_PREFIX) and name.endswith(SIGNATURE_SUFFIXES)
             ]
         except Exception as e:
-            print(self.apk_path)
-            print(e)
+            self._fail("certs", e)
             return
 
         try:
             self._certs[_hash] = Certificates(entries, _hash=_hash).content
-        except CertificateError:
-            if self.strict:
-                raise
-            traceback.print_exc()
+        except CertificateError as e:
+            self._fail("certs", e)

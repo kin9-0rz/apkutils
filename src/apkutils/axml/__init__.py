@@ -1265,8 +1265,9 @@ class AXMLPrinter:
                 comment = self.axml.comment
                 if comment:
                     if self.root is None:
-                        print("Can not attach comment without root!")
-                        print("Comment: ", comment)
+                        log.warning(
+                            "Can not attach comment without root! Comment: %r", comment
+                        )
                     else:
                         cur[-1].append(lxml.etree.Comment(comment))
 
@@ -1278,7 +1279,7 @@ class AXMLPrinter:
                     value = self._fix_value(self._get_attribute_value(i))
 
                     if "{}{}".format(uri, name) in elem.attrib:
-                        print("Duplicate attribute '{}'!".format(uri + name))
+                        log.warning("Duplicate attribute '%s'!", uri + name)
                     elem.set("{}{}".format(uri, name), value)
 
                 if self.root is None:
@@ -1286,8 +1287,9 @@ class AXMLPrinter:
                 else:
                     if not cur:
                         # looks like we lost the root?
-                        print(
-                            "No more elements available to attach to! Is the XML malformed?"
+                        log.warning(
+                            "No more elements available to attach to! "
+                            "Is the XML malformed?"
                         )
                         break
                     cur[-1].append(elem)
@@ -1295,7 +1297,7 @@ class AXMLPrinter:
 
             if _type == END_TAG:
                 if not cur:
-                    print("Too many END_TAG! No more elements available to attach to!")
+                    log.warning("Too many END_TAG! No more elements available to attach to!")
 
                 name = self.axml.name
                 uri = self._print_namespace(self.axml.namespace)
@@ -1306,7 +1308,6 @@ class AXMLPrinter:
                             self.axml.name, self.axml.m_lineNumber
                         )
                     )
-                    print("Closing tag '{}' does not match current stack! ".format(tag))
 
                 cur.pop()
             if _type == TEXT:
@@ -1315,7 +1316,7 @@ class AXMLPrinter:
             if _type == END_DOCUMENT:
                 # Check if all namespace mappings are closed
                 if len(self.axml.namespaces) > 0:
-                    print("Not all namespace mappings were closed!")
+                    log.warning("Not all namespace mappings were closed!")
                 break
 
     def get_buff(self):

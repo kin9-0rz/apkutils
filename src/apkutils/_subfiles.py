@@ -10,10 +10,15 @@ import pyftype
 
 
 class Subfiles:
-    """列出归档里的每个子文件及其类型、时间、CRC。"""
+    """列出归档里的每个子文件及其类型、时间、CRC。
+
+    读不出来的条目不会被丢弃：它们记在 ``skipped`` 里，
+    由 caller（facade）决定怎么上报。
+    """
 
     def __init__(self, archive):
         self.items = []
+        self.skipped = []  # [(name, exception), ...]
         self._read(archive)
 
     def _read(self, archive):
@@ -23,7 +28,7 @@ class Subfiles:
                 mime = pyftype.guess(data).MIME
                 info = archive.getinfo(name)
             except Exception as ex:
-                print(name, ex)
+                self.skipped.append((name, ex))
                 continue
 
             self.items.append(

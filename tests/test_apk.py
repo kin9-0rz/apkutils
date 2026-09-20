@@ -120,3 +120,49 @@ def test_strict_surfaces_dex_error():
     with APK.from_bytes(data, strict=True) as apk:
         with pytest.raises(DexError):
             apk.parse_dex()
+
+
+def test_close_is_safe_without_archive():
+    apk = APK()
+    apk.close()
+    apk.close()
+
+
+def test_failures_are_recorded_not_printed(capsys):
+    data = _apk_bytes(
+        {"AndroidManifest.xml": b"not an axml", "resources.arsc": b"not an arsc"}
+    )
+
+    with APK.from_bytes(data) as apk:
+        apk.parse_resource()
+        assert {err.part for err in apk.errors} == {"manifest", "arsc"}
+
+    assert capsys.readouterr().out == ""
+
+
+def test_strict_records_the_error_before_raising():
+    data = _apk_bytes({"AndroidManifest.xml": b"not an axml"})
+
+    with APK.from_bytes(data, strict=True) as apk:
+        with pytest.raises(ManifestError):
+            apk.parse_resource()
+
+    assert [err.part for err in apk.errors] == ["manifest"]
+
+
+def test_no_manifest_is_only_parsed_once(monkeypatch):
+    with APK.from_bytes(_apk_bytes({"dummy.txt": b"x"})) as apk:
+        calls = []
+        original = apk._init_manifest
+
+        def spy():
+            calls.append(1)
+            return original()
+
+        monkeypatch.setattr(apk, "_init_manifest", spy)
+
+        assert apk.get_manifest() == ""
+        assert apk.get_manifest() == ""
+        assert apk.get_manifest() == ""
+
+        assert len(calls) == 1

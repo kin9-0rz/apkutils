@@ -1,5 +1,6 @@
 import os
 import zipfile
+from types import SimpleNamespace
 
 from apkutils._subfiles import Subfiles
 
@@ -27,3 +28,26 @@ def test_crc_is_always_eight_hex_digits():
 
     assert items
     assert all(len(item["crc"]) == 8 for item in items)
+
+
+class _FakeArchive:
+    """只实现 Subfiles 需要的 handle interface，用来触发逐条失败。"""
+
+    def namelist(self):
+        return ["good.txt", "bad.txt"]
+
+    def read(self, name):
+        if name == "bad.txt":
+            raise ValueError("无法读取")
+        return b"hello"
+
+    def getinfo(self, name):
+        return SimpleNamespace(date_time=(2020, 1, 2, 3, 4, 5), CRC=0xAB)
+
+
+def test_skipped_entries_are_collected_not_dropped():
+    subfiles = Subfiles(_FakeArchive())
+
+    assert [item["name"] for item in subfiles.items] == ["good.txt"]
+    assert [name for name, _ in subfiles.skipped] == ["bad.txt"]
+    assert isinstance(subfiles.skipped[0][1], ValueError)

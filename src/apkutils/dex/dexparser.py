@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import array
+import logging
 
 from apkutils.dex.byteio import Reader
 from apkutils.dex.dalvik import parseBytecode
 from apkutils.dex.util import signExtend
+
+log = logging.getLogger("apkutils.dex")
 
 NO_INDEX = 0xFFFFFFFF
 
@@ -305,13 +308,13 @@ class DexFile:
         stream.read(32)  # skip 32(magic, magic_vers, checksum, sha1)
 
         if stream.u32() != len(self.raw):
-            print("Warning, unexpected file size!")
+            log.warning("DEX 文件长度与头部的声明不一致")
 
         if stream.u32() != 0x70:
-            print("Warning, unexpected header size!")
+            log.warning("DEX 头部长度不是 0x70")
 
         if stream.u32() != 0x12345678:
-            print("Warning, unexpected endianess tag!")
+            log.warning("DEX 字节序标记不是 0x12345678")
 
         self.link = SizeOff(stream)
         self.map_off = stream.u32()
