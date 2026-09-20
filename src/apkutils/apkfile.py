@@ -9,6 +9,7 @@ Read and write APK files.
 import binascii
 import importlib
 import io
+import logging
 import os
 import re
 import shutil
@@ -54,6 +55,9 @@ __all__ = [
     "PyZipFile",
     "LargeZipFile",
 ]
+
+
+log = logging.getLogger("apkutils")
 
 
 class BadZipFile(Exception):
@@ -1238,13 +1242,6 @@ class ZipFile:
         archive."""
         return self.filelist
 
-    def printdir(self, file=None):
-        """Print a table of contents for the zip file."""
-        print("%-46s %19s %12s" % ("File Name", "Modified    ", "Size"), file=file)
-        for zinfo in self.filelist:
-            date = "%d-%02d-%02d %02d:%02d:%02d" % zinfo.date_time[:6]
-            print("%-46s %s %12d" % (zinfo.filename, date, zinfo.file_size), file=file)
-
     def testzip(self):
         """Read all the files and check the CRC."""
         chunk_size = 2**20
@@ -1255,7 +1252,7 @@ class ZipFile:
                 with self.open(zinfo.filename, "r") as f:
                     name = zinfo.filename.split(os.path.sep)[-1]
                     if len(name) > 255:
-                        print("存在超过255个字符串的文件名，跳过")
+                        log.warning("存在超过255个字符串的文件名，跳过: %s", zinfo.filename)
                         continue
                     while f.read(chunk_size):  # Check CRC-32
                         pass
@@ -1446,7 +1443,7 @@ class ZipFile:
 
         sep_size = targetpath.count(os.path.sep)
         if sep_size > 255:
-            print(f"跳过(路径过长): {targetpath}")
+            log.warning("跳过(路径过长): %s", targetpath)
             return
 
         # Create all upper directories if necessary.
@@ -1459,7 +1456,6 @@ class ZipFile:
                 os.mkdir(targetpath)
             return targetpath
 
-        print(targetpath, "->", pwd)
         with self.open(member, pwd=pwd) as source, open(targetpath, "wb") as target:
             shutil.copyfileobj(source, target)
 

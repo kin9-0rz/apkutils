@@ -34,7 +34,10 @@ def unzip(path, t, e, output):
         print("Done testing")
     else:
         with apkfile.ZipFile(path, "r") as zf:
-            zf.printdir()
+            print("%-46s %19s %12s" % ("File Name", "Modified    ", "Size"))
+            for zinfo in zf.infolist():
+                date = "%d-%02d-%02d %02d:%02d:%02d" % zinfo.date_time[:6]
+                print("%-46s %s %12d" % (zinfo.filename, date, zinfo.file_size))
 
 
 @main.command()

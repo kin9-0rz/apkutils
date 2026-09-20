@@ -13,14 +13,6 @@ import lxml
 from apkutils.axml import bytecode, public
 
 log = logging.getLogger("axml")
-log.setLevel(logging.CRITICAL)
-
-log.setLevel(logging.DEBUG)
-# handler = logging.FileHandler("axml.log")
-# handler.setFormatter(
-#     logging.Formatter("%(levelname)s[%(name)s][%(lineno)d]: %(message)s")
-# )
-# log.addHandler(handler)
 
 # ---------------------------------------------------------------------------- #
 
@@ -338,11 +330,6 @@ def complexToFloat(xcomplex):
     return float(xcomplex & 0xFFFFFF00) * RADIX_MULTS[(xcomplex >> 4) & 3]
 
 
-def print_nrange(alist: list, n: int):
-    for b in [alist[i : i + n] for i in range(0, len(alist), n)]:
-        print(b)
-
-
 class ResStringPoolHeader:
     """
     StringBlock is a CHUNK inside an AXML File: `ResStringPool_header`
@@ -610,39 +597,6 @@ class ResStringPoolHeader:
             )
 
         return length, size
-
-    def show(self):
-        """
-        Print some information on stdout about the string table
-        """
-        print(
-            "StringBlock(stringsCount=0x%x, "
-            "stringsOffset=0x%x, "
-            "stylesCount=0x%x, "
-            "stylesOffset=0x%x, "
-            "flags=0x%x"
-            ")"
-            % (
-                self.stringCount,
-                self.stringsOffset,
-                self.styleCount,
-                self.stylesOffset,
-                self.flags,
-            )
-        )
-
-        if self.stringCount > 0:
-            print()
-            print("String Table: ")
-            for i, s in enumerate(self):
-                print("{:08d} {}".format(i, repr(s)))
-
-        if self.styleCount > 0:
-            print()
-            print("Styles Table: ")
-            for i in range(self.styleCount):
-                print("{:08d} {}".format(i, repr(self.getStyle(i))))
-
 
 # AXMLParser 专用事件
 START_DOCUMENT = 0
