@@ -7,7 +7,7 @@ from pygments import highlight
 from pygments.formatters.terminal import TerminalFormatter
 from pygments.lexers import get_lexer_by_name
 
-from apkutils import APK, apkfile
+from apkutils import APK, _apkfile
 
 
 @click.group()
@@ -24,16 +24,16 @@ def main():
 def unzip(path, t, e, output):
     """解压文件，默认显示zip文件"""
     if e:
-        with apkfile.ZipFile(path, "r") as zf:
+        with _apkfile.ZipFile(path, "r") as zf:
             zf.extractall(output)
     elif t:
-        with apkfile.ZipFile(path, "r") as zf:
+        with _apkfile.ZipFile(path, "r") as zf:
             badfile = zf.testzip()
         if badfile:
             print("The following enclosed file is corrupted: {!r}".format(badfile))
         print("Done testing")
     else:
-        with apkfile.ZipFile(path, "r") as zf:
+        with _apkfile.ZipFile(path, "r") as zf:
             print("%-46s %19s %12s" % ("File Name", "Modified    ", "Size"))
             for zinfo in zf.infolist():
                 date = "%d-%02d-%02d %02d:%02d:%02d" % zinfo.date_time[:6]

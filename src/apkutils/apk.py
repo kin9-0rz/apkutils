@@ -4,7 +4,7 @@ import logging
 
 import pyftype
 
-from apkutils import apkfile
+from apkutils import _apkfile
 from apkutils._certificates import (
     META_INF_PREFIX,
     SIGNATURE_SUFFIXES,
@@ -66,7 +66,7 @@ class APK:
     @classmethod
     def from_io(cls, _io, strict=False):
         apk = cls(strict=strict)
-        apk.afile = apkfile.ZipFile(_io, "r")
+        apk.afile = _apkfile.ZipFile(_io, "r")
         return apk
 
     def parse_resource(self):
