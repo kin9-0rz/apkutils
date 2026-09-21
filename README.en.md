@@ -4,7 +4,7 @@
 
 #### Description
 
-A Parser for APK, Dex, ARSC, AXML, ELF.
+A Parser for APK, Dex, ARSC, AXML.
 
 
 #### Installation
@@ -36,7 +36,7 @@ Commands:
 from apkutils import APK
 
 # NOTE 按需解析，这里仅仅解析清单，不解析dex、图标。
-apk = APK.from_file(file_path).parse_manifest()
+apk = APK.from_file(file_path).parse_resource()
 manifest = apk.get_manifest()
 apk.close()
 

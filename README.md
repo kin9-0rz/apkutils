@@ -4,7 +4,7 @@
 
 ## 介绍
 
-一个用于解析APK、Dex、AXML、ARSC、ELF的库。
+一个用于解析APK、Dex、AXML、ARSC的库。
 
 ## 安装教程
 
