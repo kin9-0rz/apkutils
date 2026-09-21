@@ -11,9 +11,7 @@ dependencies = [
   "click>=8.0.3,<9.0.0",
   "cryptography>=39.0.1",
   "lxml>=5.0.0",
-  "pyelftools>=0.27,<0.28",
   "pyftype>=1.2.4,<2.0.0",
-  "colorlog>=6.7.0,<7.0.0",
 ]
 
 [project.urls]
