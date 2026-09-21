@@ -69,7 +69,6 @@ InvokeDirect = next(_it)
 InvokeStatic = next(_it)
 InvokeInterface = next(_it)
 
-# actual ops for these are defined in jvm/mathops.py
 UnaryOp = next(_it)
 BinaryOp = next(_it)
 BinaryOpConst = next(_it)
