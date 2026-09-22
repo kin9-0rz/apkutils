@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://gitee.com/kin9-0rz/apkutils"
+Repository = "https://github.com/kin9-0rz/apkutils"
 
 [project.scripts]
 apkutils = 'apkutils.cli:main'
