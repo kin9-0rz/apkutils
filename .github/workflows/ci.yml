@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  # 门禁触发点：master 的每次 push，以及所有 pull request
   push:
     branches: [master]
   pull_request:
