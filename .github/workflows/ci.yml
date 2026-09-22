@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# 只读权限：CI 不需要写任何东西
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    strategy:
+      # 两个矩阵项都要跑完并各自报告，任一失败仍使整个 check 失败
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+
+      # 设置 python-version 会写入 UV_PYTHON，后续 uv 命令据此选择解释器，
+      # 缺失时由 uv 自行下载，无需额外的 setup-python 步骤。
+      # 注意：该 action 未发布 v8/v9/v10 浮动主标签，故固定到精确版本。
+      - name: Install uv and select Python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify lockfile agrees with pyproject.toml
+        run: uv lock --check
+
+      - name: Install locked dependencies
+        run: uv sync --locked
+
+      - name: Run tests (benchmarks skipped)
+        run: uv run pytest --benchmark-skip
