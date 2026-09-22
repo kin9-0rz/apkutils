@@ -206,6 +206,28 @@ class APK:
     def dex_files(self):
         return self._dex.dex_files if self._dex is not None else []
 
+    @property
+    def opcodes(self):
+        """兼容 2.0.5 的 ``opcodes`` 缓存属性（只读），即 ``get_dex_opcodes()`` 的结果。
+
+        与 2.0.5 的差别只有一处：dex 已解析但未调用过 ``get_dex_opcodes()`` 时，
+        这里返回结果而非 ``None``。
+        """
+        if self._dex is None:
+            return None
+        return self._dex.opcodes_list()
+
+    @property
+    def strings_refx(self):
+        """兼容 2.0.5 的 ``strings_refx`` 缓存属性（只读），即 ``get_dex_strings_refx()`` 的结果。
+
+        与 2.0.5 的差别只有一处：dex 已解析但未调用过 ``get_dex_strings_refx()`` 时，
+        这里返回结果而非 ``None``。
+        """
+        if self._dex is None:
+            return None
+        return self._dex.strings_refx_index()
+
     def get_dex_classes(self):
         return self._ensure_dex().classes()
 
