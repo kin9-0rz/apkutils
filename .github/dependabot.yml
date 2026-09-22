@@ -1,0 +1,32 @@
+version: 2
+
+updates:
+  # uv：定时版本更新。
+  # 本仓库此前从未运行过 version updates（.github/dependabot.yml 从未存在），
+  # 依赖只能等安全告警逼着一次跳过多个大版本（例如 cryptography 46.0.7 → 50.0.0）。
+  # 定时推进的目的正是让安全修复以小步到来。
+  - package-ecosystem: uv
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      # 顺序敏感：分组按声明顺序匹配，先匹配者胜出。
+      # prod 的 "*" 若排在前面，会把 dev 依赖一并吃掉，dev 组形同不存在。
+      dev:
+        patterns:
+          - "pytest"
+          - "pytest-benchmark"
+      # 不能用 groups.dependency-type 来表达依赖类型：
+      # 该子选项的受支持生态为 bundler / composer / mix / maven / npm / pip，不含 uv。
+      prod:
+        patterns:
+          - "*"
+
+  # github-actions：跟进 workflow 中引用的 action 版本。
+  # 与 uv 条目互相独立，不产生依赖关系。
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
