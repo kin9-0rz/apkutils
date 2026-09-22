@@ -119,9 +119,7 @@ ENV/
 # others
 *.apk
 
-# agent skills 与本地工程约定（不入库）
-AGENTS.md
+# agent skills（第三方 pack，本地安装，不入库）
 .agents/
 .pi/
 skills-lock.json
-docs/agents/
