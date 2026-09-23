@@ -1,6 +1,6 @@
 # 发布：手工 tag + uv build + twine upload
 
-发布是**手工流程**：没有 release workflow，没有 trusted publishing，也没有 `make publish`。为什么这样，见 `docs/adr/0012-release-is-manual-tag-plus-twine.md`。
+发布是**手工流程**：没有 release workflow，也没有 trusted publishing；`make build` / `make publish` 只是命令别名，发布正确性由本文这份人工验证清单保证。为什么这样，见 `docs/adr/0012-release-is-manual-tag-plus-twine.md`。
 
 「改动走 branch + PR」的前提见 `git-workflow.md`；发布是在 merge 之后追加的一步。
 
@@ -39,7 +39,7 @@ git push origin vX.Y.Z
 **上传不可逆**：同一个版本号不能重传，传错只能 yank 后另发一个号。所以先把验证做满：
 
 ```bash
-rm -rf dist && uv build          # wheel + sdist，不要加 --wheel
+make build                       # = rm -rf dist && uv build，同时产出 wheel 与 sdist
 uv run --with twine twine check dist/*
 ```
 
@@ -48,7 +48,13 @@ uv run --with twine twine check dist/*
 ### 5. 上传
 
 ```bash
-uv run --with twine twine upload --non-interactive --disable-progress-bar dist/*
+make publish                     # = make build + twine upload，已带 UTF-8 与禁进度条两个 flag
+```
+
+它展开成的就是下面这一条：
+
+```bash
+PYTHONIOENCODING=utf-8 uv run --with twine twine upload --non-interactive --disable-progress-bar dist/*
 ```
 
 凭据读 `~/.pypirc` 的 `[pypi]` 段（`pypi-` 开头的 token）。
@@ -62,7 +68,7 @@ curl -s "https://pypi.org/pypi/apkutils/json?ts=$(date +%s)"   # 主端点有 CD
 
 ## 坑
 
-- **twine 在 Windows 的 GBK 控制台上会崩**：rich 的进度条抛 `UnicodeEncodeError: 'gbk' codec can't encode character '\u2022'`，上传中断。用 `PYTHONIOENCODING=utf-8` 加 `--disable-progress-bar` 绕开。判断这次到底传上去了没有，要查**版本专属**端点（`/pypi/apkutils/X.Y.Z/json`），别信主端点——它有 CDN 缓存，发布后一段时间仍在报旧版本。
+- **twine 在 Windows 的 GBK 控制台上会崩**：rich 的进度条抛 `UnicodeEncodeError: 'gbk' codec can't encode character '\u2022'`，上传中断。`make publish` 已经带上 `PYTHONIOENCODING=utf-8` 与 `--disable-progress-bar`；手工敲命令时要自己加。判断这次到底传上去了没有，要查**版本专属**端点（`/pypi/apkutils/X.Y.Z/json`），别信主端点——它有 CDN 缓存，发布后一段时间仍在报旧版本。
 - **`uv.lock` 也带版本号**：见流程第 1 步。
 - **徽章滞后不是故障**：shields.io 对 `pypi/status`、`pypi/l`、`pypi/pyversions` 的 `_cacheLength` 是 86400 秒，GitHub 的 camo 图片代理还有一层缓存，README 上的徽章最长滞后 24 小时。想立刻确认 shields 的上游数据是否已更新，给 URL 加一个无关查询参数换出未缓存的 URL：
   `https://img.shields.io/pypi/l/apkutils?style=for-the-badge&probe=1`

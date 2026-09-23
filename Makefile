@@ -11,3 +11,5 @@ bench: sync ## run benchmark
 build: ## build（wheel + sdist）
 	rm -rf dist
 	uv build
+publish: build ## 发布到 PyPI（先构建 wheel + sdist，再 twine upload）
+	PYTHONIOENCODING=utf-8 uv run --with twine twine upload --non-interactive --disable-progress-bar dist/*
