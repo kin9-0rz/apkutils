@@ -62,3 +62,32 @@ jobs:
       # 那会拿「最低」解析出的 lock 去比对「最高」解析的预期结果。
       - name: Run tests against the declared lower bounds
         run: uv run --resolution lowest-direct pytest --benchmark-skip
+
+  # 构建后端门禁：[build-system].requires 必须封顶到下一个 minor（见 ADR-0011）。
+  # 这里刻意不钉住 uv 版本（setup-uv 默认装最新），使上游发布新的 uv minor 时本 job
+  # 变红 —— 这是金丝雀信号，用来强制同步 bump 上限，而不是缺陷。
+  #
+  # 两类 warning 都表示 pin 已损坏：「当前 uv 版本不在范围内」（wheel 与 sdist 都报）、
+  # 以及「缺少上限」（只在 sdist 路径报）。因此必须用默认的 `uv build` 同时构建两者，
+  # 只跑 `--wheel` 会漏掉「上限被删」这种情况。
+  # pin 过期时这些 warning 不改变退出码（仍为 0），所以判定依据是输出文本，并先折叠
+  # 空白以兼容 uv 对长消息的折行。
+  build-backend:
+    name: build-backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.2.0
+
+      - name: Build and fail on a stale build-backend pin
+        run: |
+          set -euo pipefail
+          output="$(uv build 2>&1)"
+          printf '%s\n' "$output"
+          flat="$(printf '%s' "$output" | tr '\n' ' ' | tr -s ' ')"
+          if grep -Eq 'does not contain the current uv version|is missing an upper bound' <<< "$flat"; then
+            echo "::error::[build-system].requires 已与当前 uv 版本脱节；请按 uv CHANGELOG 把上限 bump 到下一个 minor（见 ADR-0011）。"
+            exit 1
+          fi
