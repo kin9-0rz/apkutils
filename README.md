@@ -25,7 +25,7 @@ Commands:
   arsc      打印arsc
   certs     打印证书
   files     打印文件
-  info      打印清单
+  info      打印包名、应用名、版本号、SDK与证书
   manifest  打印清单
   mtds      获取指定方法中的所有字符串
   packages  列出所有的包
@@ -39,7 +39,7 @@ Commands:
 | `arsc` | 打印 arsc 资源 | `--res_type`：`string`（默认）/ `strings` / `bool` / `id` / `color` / `dimen` / `integer` / `public` |
 | `certs` | 打印证书 | |
 | `files` | 打印归档内的文件 | |
-| `info` | 打印包名、应用名、版本号、minSdk / targetSdk 与证书 | |
+| `info` | 打印包名、应用名、版本号、SDK 与证书 | |
 | `manifest` | 打印清单原文，并列出 Package 与 Main Activities | |
 | `mtds` | 获取指定方法中的所有字符串 | `-m` / `--method` |
 | `packages` | 列出所有的包 | |

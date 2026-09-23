@@ -43,7 +43,7 @@ def unzip(path, t, e, output):
 @main.command()
 @click.argument("path")
 def info(path):
-    """打印清单"""
+    """打印包名、应用名、版本号、SDK与证书"""
     apk = APK.from_file(path).parse_resource()
     print(f"包  名: {apk.package_name}")
     print(f"应用名: {apk.app_name}")
