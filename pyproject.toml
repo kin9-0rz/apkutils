@@ -4,7 +4,24 @@ version = "2.1.0"
 description = "一个APK解析库"
 readme = "README.md"
 authors = [{ name = "kin9-0rz", email = "kin9-0rz@outlook.com" }]
+# license / license-files / classifiers 不只是给人看的：shields.io 的
+# pypi/status、pypi/pyversions、pypi/l 三张徽章直接读 PyPI metadata 里的这些字段，
+# 缺失时分别渲染成 unknown / missing。改动见 tests/test_packaging_metadata.py。
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
+classifiers = [
+  # shields pypi/status
+  "Development Status :: 5 - Production/Stable",
+  # shields pypi/l（license 表达式的兜底路径）
+  "License :: OSI Approved :: MIT License",
+  # shields pypi/pyversions；下限必须与 requires-python 一致，版本列表与 CI 矩阵对齐
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
 dependencies = [
   "Pygments>=2.12.0",
   "beautifulsoup4>=4.10.0",
