@@ -1,6 +1,6 @@
 [project]
 name = "apkutils"
-version = "2.1.0"
+version = "2.1.1"
 description = "一个APK解析库"
 readme = "README.md"
 authors = [{ name = "kin9-0rz", email = "kin9-0rz@outlook.com" }]
