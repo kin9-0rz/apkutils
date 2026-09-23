@@ -25,7 +25,7 @@ Commands:
   arsc      打印arsc
   certs     打印证书
   files     打印文件
-  info      打印清单
+  info      打印包名、应用名、版本号、SDK与证书
   manifest  打印清单
   mtds      获取指定方法中的所有字符串
   packages  列出所有的包
@@ -41,7 +41,7 @@ The CLI itself is Chinese-only, hence the help text above is shown verbatim.
 | `arsc` | Print arsc resources | `--res_type`: `string` (default) / `strings` / `bool` / `id` / `color` / `dimen` / `integer` / `public` |
 | `certs` | Print certificates | |
 | `files` | Print the files inside the archive | |
-| `info` | Print package name, app name, version, minSdk / targetSdk and certificates | |
+| `info` | Print package name, app name, version, SDK and certificates | |
 | `manifest` | Print the raw manifest, plus Package and Main Activities | |
 | `mtds` | Print every string inside a given method | `-m` / `--method` |
 | `packages` | List all packages | |
