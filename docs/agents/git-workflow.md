@@ -18,6 +18,8 @@
 4. 等 4 个必需检查在 PR 上变绿（`gh pr checks --watch`）
 5. merge（仓库允许 squash 与 merge commit；`delete_branch_on_merge` 已开）
 
+发版不在这个流程里：它是在 merge 之后追加的手工步骤（annotated tag + 构建 + 上传），见 `release.md`。
+
 若尝试直推 `master`，push 会被拒绝并提示 `Protected branch update failed` / `required status checks are expected`。看到这个**不要**用 `--force`、也不要去关分支保护——改成走上面的 PR 流程。
 
 ## `build-backend` 金丝雀变红时怎么办
