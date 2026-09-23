@@ -43,7 +43,17 @@ make build                       # = rm -rf dist && uv build，同时产出 whee
 uv run --with twine twine check dist/*
 ```
 
-再解包核对 METADATA：`Version`、`License-Expression`、`License-File`、全部 `Classifier:` 行、`Project-URL`。最后在一个干净 venv 里装一次 wheel 跑冒烟——`import apkutils`、`apkutils --help`、用 `tests/fixtures/test.zip` 解析一遍并确认 `apk.errors` 为空。
+再解包核对 METADATA：`Version`、`License-Expression`、`License-File`、全部 `Classifier:` 行、`Project-URL`。最后把 wheel 装进一个干净 venv 跑冒烟：
+
+```bash
+SMOKE="$TEMP/smoke"                      # POSIX 下：SMOKE=/tmp/smoke
+uv venv "$SMOKE"
+uv pip install --python "$SMOKE" dist/*.whl   # 传 venv 目录，uv 自己找解释器
+"$SMOKE/Scripts/python" -c "from importlib.metadata import version; print(version('apkutils'))"   # POSIX 下："$SMOKE/bin/python"
+"$SMOKE/Scripts/apkutils" --help              # 顺带验证 console script 也装上了
+```
+
+再用 `tests/fixtures/test.zip` 解析一遍并确认 `apk.errors` 为空。这一步刻意**不用** `uv run`：要验证的是**装出来的 wheel**，而不是工作区的 editable 安装。
 
 ### 5. 上传
 
