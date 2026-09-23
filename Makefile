@@ -8,6 +8,6 @@ test: sync ## run test
 	uv run pytest --benchmark-skip
 bench: sync ## run benchmark
 	uv run pytest --benchmark-only
-build: ## build
+build: ## build（wheel + sdist）
 	rm -rf dist
-	uv build --wheel
+	uv build
