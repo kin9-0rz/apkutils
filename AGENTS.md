@@ -1,5 +1,9 @@
 ## Agent skills
 
+### Python 环境
+
+本项目用 **uv** 管理开发环境与依赖：一律 `uv sync` / `uv run ...` / `uv build`，**不要**使用系统 Python（本机 PATH 上的 `python` 是 scoop shim，会间歇性以 exit code 49 静默失败）。需要额外工具时用 `uv run --with <pkg> <cmd>`，不要全局安装。CI 同理：用 `astral-sh/setup-uv` 选择解释器，没有 `setup-python`。
+
 ### Issue tracker
 
 Issues 存放在 GitHub Issues（`kin9-0rz/apkutils`），通过 `gh` CLI 操作。详见 `docs/agents/issue-tracker.md`。
