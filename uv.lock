@@ -23,12 +23,12 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "beautifulsoup4", specifier = ">=4.10.0,<5.0.0" },
-    { name = "click", specifier = ">=8.0.3,<9.0.0" },
+    { name = "beautifulsoup4", specifier = ">=4.10.0" },
+    { name = "click", specifier = ">=8.0.3" },
     { name = "cryptography", specifier = ">=39.0.1" },
     { name = "lxml", specifier = ">=5.0.0" },
-    { name = "pyftype", specifier = ">=1.2.4,<2.0.0" },
-    { name = "pygments", specifier = ">=2.12.0,<3.0.0" },
+    { name = "pyftype", specifier = ">=1.2.4" },
+    { name = "pygments", specifier = ">=2.12.0" },
 ]
 
 [package.metadata.requires-dev]

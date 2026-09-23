@@ -37,3 +37,28 @@ jobs:
 
       - name: Run tests (benchmarks skipped)
         run: uv run pytest --benchmark-skip
+
+  # 下限验证：直接依赖降到各自下限后跑完整测试。
+  # 依赖声明只写下限（见 ADR-0010），下限因此是唯一的契约，必须可被证伪。
+  #
+  # 单独成一个 job 而不是加进上面的矩阵：上面两个 check 名称（test (3.10) /
+  # test (3.13)）已被 master 的分支保护引用为必需检查，动矩阵就会改掉这些名称，
+  # 使保护配置指向永不出现的 check 而锁死所有 PR。
+  lowest-direct:
+    name: lowest-direct
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # 固定用 3.10：下限指向的旧版本早于 Python 3.13，lxml 5.0.0 没有 cp313
+      # 轮子，在 3.13 上会退化成源码编译（需要 libxml2 头文件）。
+      - name: Install uv and select Python 3.10
+        uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: "3.10"
+
+      # 注意：--resolution lowest-direct 会重新解析并重写 uv.lock（uv 不支持多份
+      # lockfile）。在本 job 中这是预期的，因此这里不能搭配 uv lock --check ——
+      # 那会拿「最低」解析出的 lock 去比对「最高」解析的预期结果。
+      - name: Run tests against the declared lower bounds
+        run: uv run --resolution lowest-direct pytest --benchmark-skip
