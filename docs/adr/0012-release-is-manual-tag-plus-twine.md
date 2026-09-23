@@ -2,7 +2,7 @@
 
 发布没有一个 release workflow：版本号提升走普通 PR，合并后在 `master` 上打 annotated tag `vX.Y.Z`，再由维护者在本机构建并用 `twine` 上传；凭据放在 `~/.pypirc` 的 `[pypi]` 段。也不建 GitHub Release。
 
-决策：**保持手工发布，并把完整流程（含验证步骤）写进 `docs/agents/release.md`。**
+决策：**保持手工发布，并把完整流程（含验证步骤）写进 `docs/agents/release.md`；`make build` / `make publish` 只作为命令别名存在，不承载流程。**
 
 理由：
 
@@ -20,13 +20,16 @@
 
 **tag 触发的 CI 自动发布（trusted publishing）**被拒绝：见上——收益是把三条命令挪进 YAML，代价是给不可逆动作加一条无人值守路径，并要求在 PyPI 侧新增 publisher 配置。
 
-**用 `make publish` 封装上传**被拒绝：现有 `Makefile` 在维护者本机并不可用（没有 `make`），封装出的目标没人验证，等于把一个未测试的脚本当成发布入口；文档里的命令反而能被逐条复制执行。**这里有一个被接受的例外**：去掉 `make build` 里的 `--wheel`——那是修一个会产出错误发布物的既有目标，不是新增发布入口。
+**把整个发布流程封装成 `make publish`**被拒绝：`twine` 没有 dry-run，TestPyPI 也没有现成凭据，因此封装出的目标无法在真实索引之外端到端验证，等于把一个未测试的脚本当成发布入口；发布真正容易出错的地方（漏改 `uv.lock` 版本号、没核对 METADATA、没跑冒烟）也不在目标能覆盖的范围内。
+
+**被采纳的是薄封装**：`make build` 与 `make publish` 只是两条命令的别名（各一行），发布正确性仍然依赖 `docs/agents/release.md` 里那份人工逐条执行的清单。这里更正一条写错的事实：本条原先的拒绝理由写作「维护者本机没有 `make`」，那个前提已经过期，`make` 现在本机可用，`make build` 已实测产出 wheel 与 sdist。
 
 **继续只发 wheel（`uv build --wheel`）**被拒绝：sdist 是 Python 打包生态的常规产物，也是下游与发行版审计、自行构建的入口；ADR-0011 写下「对一个已发布的 sdist 而言」时已经预期了它。代价是多一份需要维护的产物面。
 
 ## Consequences
 
-- 发布是**维护者本机的动作**，本机环境因此会渗进流程：Windows 的 GBK 控制台会让 `twine` 的进度条崩溃，必须带 `PYTHONIOENCODING=utf-8` 与 `--disable-progress-bar`（见 `docs/agents/release.md`）。
+- 发布是**维护者本机的动作**，本机环境因此会渗进流程：Windows 的 GBK 控制台会让 `twine` 的进度条崩溃，必须带 `PYTHONIOENCODING=utf-8` 与 `--disable-progress-bar`（`make publish` 已经把这两个 flag 写进配方，见 `docs/agents/release.md`）。
+- `make build` 已在维护者本机实测（产出 wheel + sdist）；`make publish` 只验证到 `make -n publish` 的拼装是否等于那条人工命令——`twine` 没有 dry-run、TestPyPI 没有凭据，所以它作为别名存在，但不是一条被独立验证过的路径。
 - tag 约定是 annotated `vX.Y.Z`，打在合并后的 `master` 上；仓库**没有** GitHub Release。
 - 徽章的可见变化滞后于发布：shields.io 对 `pypi/status`、`pypi/l`、`pypi/pyversions` 的缓存是 86400 秒，GitHub 的 camo 还有一层。判断发布是否成功应以 PyPI 的 JSON API 为准，而不是 README 上的徽章。
 - `dist/` 被 gitignore，发布产物不进仓库；发布历史的事实来源是 PyPI 与 git tag。
