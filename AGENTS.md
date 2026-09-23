@@ -11,3 +11,7 @@ Issues 存放在 GitHub Issues（`kin9-0rz/apkutils`），通过 `gh` CLI 操作
 ### Domain docs
 
 Single-context 布局：repo root 的 `CONTEXT.md` + `docs/adr/`。详见 `docs/agents/domain.md`。
+
+### Git 工作流
+
+`master` 受分支保护且 `enforce_admins` 已启用，改动走 **branch + PR**，不直推。详见 `docs/agents/git-workflow.md`。
