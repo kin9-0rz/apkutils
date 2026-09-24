@@ -12,7 +12,12 @@ from apkutils import APK, _apkfile
 
 @click.group()
 def main():
-    pass
+    # 控制台编码可能是 GBK 等窄编码，而清单/资源里可能含任意 Unicode
+    # （例如加固应用的 app_name）；用 replace 兜底，避免打印时崩溃。
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(errors="replace")
 
 
 @main.command()
