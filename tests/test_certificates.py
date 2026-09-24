@@ -1,4 +1,5 @@
 import os
+import warnings
 import zipfile
 
 import pytest
@@ -49,3 +50,19 @@ def test_broken_signature_raises():
 
     with pytest.raises(CertificateError):
         Certificates([("META-INF/BROKEN.RSA", truncated)])
+
+
+def test_invalid_length_attribute_does_not_warn():
+    # 百度加固样本的 test 证书 subject 是 CN=test, ..., C=test：
+    # countryName (C) 按 X.520 必须恰好 2 字符，cryptography 解析时
+    # 会打 UserWarning，但名字本身可正常读出。解析不应向调用方刷告警。
+    entries = _entries("test_cn_attr_length.zip")
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        content = Certificates(entries).content
+
+    assert content == [
+        ("CN=test, OU=test, O=test, L=test, ST=test, C=test", "0c84f6f890703ad1089af9d757e0bbf0")
+    ]
+    assert not [w for w in caught if "Attribute's length" in str(w.message)]
