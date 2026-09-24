@@ -28,6 +28,16 @@ def test_derives_icons_and_app_name():
     assert meta.app_name == "hellojni"
 
 
+def test_literal_label_is_used_as_app_name():
+    """android:label 直接写成字符串（非资源引用）时，字面量就是应用名。"""
+    manifest, resources, subfiles = _inputs("test.zip")
+    manifest.application_label_id = "米兰"
+
+    meta = AppMetadata(manifest, resources, subfiles)
+
+    assert meta.app_name == "米兰"
+
+
 def test_no_resource_table_means_empty():
     meta = AppMetadata(ManifestReader(), ResourceTable(), [])
 

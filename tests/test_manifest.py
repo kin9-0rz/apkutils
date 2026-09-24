@@ -3,7 +3,7 @@ import zipfile
 
 import pytest
 
-from apkutils._manifest import ManifestError, ManifestReader
+from apkutils._manifest import ManifestError, ManifestReader, _as_label
 
 FIXTURES = os.path.abspath(os.path.join(os.path.dirname(__file__), "fixtures"))
 
@@ -35,6 +35,16 @@ def test_absent_manifest_keeps_defaults():
 def test_unparsable_manifest_raises(bad):
     with pytest.raises(ManifestError):
         ManifestReader(bad)
+
+
+def test_as_label_normalizes_ref_but_keeps_literal():
+    # 资源引用归一成小写地址
+    assert _as_label("@7F050000") == "0x7f050000"
+    # 字面字符串（含大小写）原样保留，不能被小写化
+    assert _as_label("米兰") == "米兰"
+    assert _as_label("MyApp") == "MyApp"
+    assert _as_label("") == ""
+    assert _as_label(None) == ""
 
 
 def test_reads_package_version_and_launcher():

@@ -88,7 +88,7 @@ class ManifestReader:
 
         self.application = application_tag.get("android:name", "")
         self.application_icon_addr = _as_res_addr(application_tag.get("android:icon"))
-        self.application_label_id = _as_res_addr(application_tag.get("android:label"))
+        self.application_label_id = _as_label(application_tag.get("android:label"))
 
         self._find_activities(soup)
 
@@ -122,3 +122,15 @@ class ManifestReader:
 def _as_res_addr(value):
     """把 ``@0x7f…`` 资源引用归一成小写 ``0x7f…``；缺失时返回空串。"""
     return str(value or "").lower().replace("@", "0x")
+
+
+def _as_label(value):
+    """归一 label：``@0x7f…`` 资源引用转成小写 ``0x7f…``；字面字符串原样保留。
+
+    与 `_as_res_addr` 的区别在于字面量不能被小写化——
+    ``android:label`` 允许直接写字符串（如 ``MyApp``），那本身就是应用名。
+    """
+    raw = str(value or "")
+    if raw.startswith("@"):
+        return "0x" + raw[1:].lower()
+    return raw
