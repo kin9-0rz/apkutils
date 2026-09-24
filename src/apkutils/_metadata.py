@@ -3,10 +3,16 @@
 `AppMetadata` 的 interface 只吃三个已解析的东西：
 清单模型、资源表、子文件列表。构造即算出 ``icons`` 与 ``app_name``。
 
-清单里存的是资源地址（``0x7f020000``），资源表把地址翻成
-``(name, type)``，子文件列表把 name/type 对上真实文件名——
+清单里的 icon 存的是资源地址（``0x7f020000``），资源表把地址翻成
+``(name, type)``，子文件列表把 name/type 对上真实文件名。label 则有两种形态：
+资源地址（查资源表）或直接的字符串（加固/混淆应用常见，用字面量）——
 这条编排链整个藏在构造里。
 """
+
+import re
+
+# 清单里的资源引用经 `_manifest._as_label` 归一后的形态：@0x7f… → 0x7f…
+_RES_ADDR = re.compile(r"^0x[0-9a-f]{8}$")
 
 
 class AppMetadataError(Exception):
@@ -43,7 +49,13 @@ class AppMetadata:
             if icon_name in name and icon_path in name:
                 self.icons.append(name)
 
-        ref = resources.resolve_reference(package, manifest.application_label_id)
+        label_id = manifest.application_label_id
+        if not _RES_ADDR.match(label_id):
+            # label 不是资源引用，而是字面字符串：字面量本身就是应用名。
+            self.app_name = label_id or None
+            return
+
+        ref = resources.resolve_reference(package, label_id)
         if ref is None:
             return
 
