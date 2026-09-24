@@ -1,9 +1,11 @@
+import logging
 import os
 import zipfile
 
 import pytest
 
 from apkutils._manifest import ManifestError, ManifestReader, _as_label
+from apkutils.axml import AXMLPrinter
 
 FIXTURES = os.path.abspath(os.path.join(os.path.dirname(__file__), "fixtures"))
 
@@ -78,3 +80,37 @@ def test_reads_relative_launcher_name():
     assert m.package_name == "com.example.kotlinapp"
     assert m.main_activities == ["com.example.kotlinapp.MainActivity"]
     assert m.target_sdk_version == "28"
+
+
+def test_packed_trap_attributes_are_dropped_quietly(caplog):
+    """百度加固（np_trap）注入的 decoy 属性：安静丢弃，且不影响正常字段。
+
+    回归：这类清单曾对每个 decoy 属性打 3 条 warning（近 2000 行），
+    并把属性名改写成 ``________manifest____android_name`` 之类的垃圾。
+    """
+    data = _manifest_bytes("packed_trap.zip")
+
+    with caplog.at_level(logging.WARNING, logger="axml"):
+        m = ManifestReader(data)
+
+    assert m.package_name == "singansfg.lwecthodnj.sdancsuhsfj"
+    assert m.version_code == "172"
+    assert m.version_name == "1.0.0"
+    assert m.min_sdk_version == "21"
+    assert m.target_sdk_version == "28"
+
+    # decoy 属性被丢弃，不再以垃圾名写进清单
+    assert "____" not in m.raw
+
+    # 不再产生“无效名字/未知命名空间”告警
+    trap_records = [
+        r
+        for r in caplog.records
+        if "Invalid start for name" in r.getMessage()
+        or "contains invalid characters" in r.getMessage()
+        or "unknown namespace prefix" in r.getMessage()
+    ]
+    assert trap_records == []
+
+    # 丢弃 decoy 不等于放过加固文件：仍需标记为 packed
+    assert AXMLPrinter(data, True).is_packed() is True

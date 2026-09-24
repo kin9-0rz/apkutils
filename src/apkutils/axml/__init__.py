@@ -1191,6 +1191,13 @@ def format_value(_type, _data, lookup_string=lambda ix: "<string>"):
     return "<0x{:X}, type 0x{:02X}>".format(_data, _type)
 
 
+# 部分加固工具（如百度加固的 np_trap）会在元素上注入 decoy 属性：
+# 属性名是 " >\n  </tag>\n  android:name" 这样的原始 XML 文本碎片，值固定为 "false"。
+# 名字里含空白或 < > 的不可能是合法 XML 名，直接丢弃，
+# 既不刷屏告警，也不把它“修复”成无意义的属性。
+_XML_FRAGMENT_NAME = re.compile(r"[\s<>]")
+
+
 class AXMLPrinter:
     """
     Converter for AXML Files into a lxml ElementTree, which can easily be
@@ -1229,6 +1236,13 @@ class AXMLPrinter:
                 for i in range(self.axml.getAttributeCount()):
                     uri = self._print_namespace(self.axml.getAttributeNamespace(i))
                     attribute_name = self.axml.getAttributeName(i)
+
+                    # 加固工具注入的 decoy 属性：丢弃，但仍标记为已加固
+                    if _XML_FRAGMENT_NAME.search(attribute_name):
+                        self.packerwarning = True
+                        log.debug("Drop decoy attribute: %r", attribute_name)
+                        continue
+
                     uri, name = self._fix_name(uri, attribute_name)
                     value = self._fix_value(self._get_attribute_value(i))
 
