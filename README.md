@@ -1,6 +1,6 @@
 # apkutils
 
-[![PyPI](https://img.shields.io/pypi/v/apkutils?style=for-the-badge)](https://pypi.org/project/apkutils/) ![PyPI - Status](https://img.shields.io/pypi/status/apkutils?style=for-the-badge) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/apkutils?style=for-the-badge) ![PyPI - Downloads](https://img.shields.io/pypi/dw/apkutils?style=for-the-badge) ![PyPI - License](https://img.shields.io/pypi/l/apkutils?style=for-the-badge)
+[![PyPI](https://img.shields.io/pypi/v/apkutils?style=for-the-badge)](https://pypi.org/project/apkutils/) ![PyPI - Status](https://img.shields.io/pypi/status/apkutils?style=for-the-badge) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/apkutils?style=for-the-badge) ![PyPI - License](https://img.shields.io/pypi/l/apkutils?style=for-the-badge)
 
 简体中文 | [English](README.en.md)
 
@@ -34,18 +34,18 @@ Commands:
   xref      获取方法的引用方法
 ```
 
-| 命令 | 用途 | 选项 |
-| --- | --- | --- |
-| `arsc` | 打印 arsc 资源 | `--res_type`：`string`（默认）/ `strings` / `bool` / `id` / `color` / `dimen` / `integer` / `public` |
-| `certs` | 打印证书 | |
-| `files` | 打印归档内的文件 | |
-| `info` | 打印包名、应用名、版本号、SDK 与证书 | |
-| `manifest` | 打印清单原文，并列出 Package 与 Main Activities | |
-| `mtds` | 获取指定方法中的所有字符串 | `-m` / `--method` |
-| `packages` | 列出所有的包 | |
-| `strings` | 打印 Dex 中的字符串 | |
-| `unzip` | 解压文件，默认列出 zip 内容 | `-t` 校验完整性，`-e` 解压到目录，`-o` / `--output` 指定输出目录（默认 `out`） |
-| `xref` | 获取方法的引用方法 | `-m` / `--method` |
+| 命令       | 用途                                            | 选项                                                                                                 |
+| ---------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `arsc`     | 打印 arsc 资源                                  | `--res_type`：`string`（默认）/ `strings` / `bool` / `id` / `color` / `dimen` / `integer` / `public` |
+| `certs`    | 打印证书                                        |                                                                                                      |
+| `files`    | 打印归档内的文件                                |                                                                                                      |
+| `info`     | 打印包名、应用名、版本号、SDK 与证书            |                                                                                                      |
+| `manifest` | 打印清单原文，并列出 Package 与 Main Activities |                                                                                                      |
+| `mtds`     | 获取指定方法中的所有字符串                      | `-m` / `--method`                                                                                    |
+| `packages` | 列出所有的包                                    |                                                                                                      |
+| `strings`  | 打印 Dex 中的字符串                             |                                                                                                      |
+| `unzip`    | 解压文件，默认列出 zip 内容                     | `-t` 校验完整性，`-e` 解压到目录，`-o` / `--output` 指定输出目录（默认 `out`）                       |
+| `xref`     | 获取方法的引用方法                              | `-m` / `--method`                                                                                    |
 
 `mtds` / `xref` 的 `-m` 形如 `top/cls->mtd(Landroid/app/Application;Ljava/lang/String;Ljava/lang/String;)V`。
 
