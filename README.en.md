@@ -30,8 +30,8 @@ Commands:
   mtds      获取指定方法中的所有字符串
   packages  列出所有的包
   strings   打印Dex中的字符串
-  unzip     解压文件，默认显示zip文件
   xref      获取方法的引用方法
+  zip       ZIP 容器层：解压、结构体检、对抗修复
 ```
 
 The CLI itself is Chinese-only, hence the help text above is shown verbatim.
@@ -46,10 +46,35 @@ The CLI itself is Chinese-only, hence the help text above is shown verbatim.
 | `mtds` | Print every string inside a given method | `-m` / `--method` |
 | `packages` | List all packages | |
 | `strings` | Print the strings in the Dex | |
-| `unzip` | Unzip, or list the zip contents by default | `-t` test integrity, `-e` extract, `-o` / `--output` output directory (`out` by default) |
 | `xref` | Print the methods referencing a given method | `-m` / `--method` |
+| `zip` | ZIP container subcommands: `unzip` / `health` / `repair` | see `zip --help` below |
 
 The `-m` argument of `mtds` / `xref` looks like `top/cls->mtd(Landroid/app/Application;Ljava/lang/String;Ljava/lang/String;)V`.
+
+### `zip` subcommands
+
+```
+❯ apkutils zip --help
+Usage: apkutils zip [OPTIONS] COMMAND [ARGS]...
+
+  ZIP 容器层：解压、结构体检、对抗修复
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  health  ZIP 结构层对抗体检（标准工具能否信任）
+  repair  清除 ZIP 结构层对抗，产出干净副本（标准工具可直接消费）
+  unzip   解压文件，默认显示zip文件
+```
+
+| Subcommand | Purpose | Options |
+| --- | --- | --- |
+| `unzip` | Unzip, or list the zip contents by default | `-t` test integrity, `-e` extract, `-o` / `--output` output directory (`out` by default) |
+| `health` | ZIP structure-level evasion check (can standard tools trust it?) | `--json` JSON output; exit code `2` when evasive/damaged |
+| `repair` | Strip ZIP structure-level evasion, write a clean copy | `-o` / `--out` output dir (`clean/` by default); JSON output, exit `2` on failure |
+
+The `health` / `repair` library API is `apkutils.ziphealth`, documented below.
 
 ## Usage
 
@@ -76,6 +101,27 @@ apk = APK.from_bytes(data)
 ```
 
 See the `examples` directory.
+
+## ziphealth (ZIP structure layer: check, repair, tolerant read)
+
+`apkutils.ziphealth` answers one question: **can standard ZIP tools trust this file?** It checks ZIP structure-level evasion (fake encryption flags, zeroed CRC, raised version fields, CD/LFH name mismatch, damaged central directory), which is orthogonal to content-layer packing — `_apkfile` tolerates all of it, so "this library can read it" does not mean "apktool/jadx/stdlib `zipfile` can".
+
+```python
+from apkutils import ziphealth
+
+report = ziphealth.check(file_path)
+# report = {"path": ..., "verdict": "ok|has_flags|cd_damaged|not_a_zip|error",
+#           "findings": [...], "info": {...}, "sha256": ..., "size": ...}
+
+result = ziphealth.repair(file_path, "clean")
+# Clears the anti-analysis flag bits (bit0/5/6) in CDFH/LFH and normalizes odd
+# version fields, then verifies the copy with the stdlib zipfile (verified="testzip").
+# It does not crack encryption.
+```
+
+Tolerant reads work on the same evasive samples: `read_file_fully` / `parse_central_directory` / `find_local_entries` / `list_entries` / `extract_entry` / `get_dex_data`.
+
+See [ADR-0013](docs/adr/0013-zip-structure-health-in-core.md).
 
 ## Error handling
 
