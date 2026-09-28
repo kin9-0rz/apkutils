@@ -1,5 +1,6 @@
 """Console script for apkutils."""
 
+import json
 import sys
 
 import click
@@ -20,7 +21,12 @@ def main():
             reconfigure(errors="replace")
 
 
-@main.command()
+@main.group(name="zip")
+def zip_group():
+    """ZIP 容器层：解压、结构体检、对抗修复"""
+
+
+@zip_group.command("unzip")
 @click.argument("path", type=click.Path(exists=True))
 # @click.option("-l", is_flag=True, help="Show listing of a zipfile")
 @click.option("-t", is_flag=True, help="Test if a zipfile is valid")
@@ -43,6 +49,38 @@ def unzip(path, t, e, output):
             for zinfo in zf.infolist():
                 date = "%d-%02d-%02d %02d:%02d:%02d" % zinfo.date_time[:6]
                 print("%-46s %s %12d" % (zinfo.filename, date, zinfo.file_size))
+
+
+@zip_group.command("health")
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--json", "as_json", is_flag=True, help="输出 JSON（单对象）")
+@click.pass_context
+def health(ctx, path, as_json):
+    """ZIP 结构层对抗体检（标准工具能否信任）"""
+    from apkutils import ziphealth
+
+    report = ziphealth.check(path)
+    if as_json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    else:
+        print(ziphealth.human(report))
+    # 退出码：有对抗/损坏/异常视为坏，便于脚本链判断（not_a_zip 不算）
+    if report["verdict"] in ("has_flags", "cd_damaged", "error"):
+        ctx.exit(2)
+
+
+@zip_group.command("repair")
+@click.argument("path", type=click.Path(exists=True))
+@click.option("-o", "--out", default="clean", help="修复件输出目录（默认 clean/）")
+@click.pass_context
+def repair(ctx, path, out):
+    """清除 ZIP 结构层对抗，产出干净副本（标准工具可直接消费）"""
+    from apkutils import ziphealth
+
+    result = ziphealth.repair(path, out)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    if result.get("status") == "repair_failed":
+        ctx.exit(2)
 
 
 @main.command()

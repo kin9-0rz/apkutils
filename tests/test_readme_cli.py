@@ -5,7 +5,8 @@
 顶层 help 钉成契约——命令、选项或短帮助一改，本测试就会失败，提醒同步
 README.md 与 README.en.md。
 
-只钉顶层 help。子命令自己的 help 不写进 README，也就没有可漂移的地方。
+只钉顶层 help 与 `zip` 子组 help（两者都写进了 README）；其余子命令自己的 help
+不写进 README，也就没有可漂移的地方。
 """
 
 import os
@@ -26,6 +27,13 @@ README_FILES = ["README.md", "README.en.md"]
 HELP_BLOCK = re.compile(
     r"^```[a-z]*\n❯ apkutils --help\n"
     r"(?P<body>Usage: apkutils \[OPTIONS\] COMMAND \[ARGS\]\.\.\..*?)^```$",
+    re.MULTILINE | re.DOTALL,
+)
+
+# 匹配 `❯ apkutils zip --help` 之后的围栏代码块（快照本身以 Usage 行开头）
+ZIP_HELP_BLOCK = re.compile(
+    r"^```[a-z]*\n❯ apkutils zip --help\n"
+    r"(?P<body>Usage: apkutils zip \[OPTIONS\] COMMAND \[ARGS\]\.\.\..*?)^```$",
     re.MULTILINE | re.DOTALL,
 )
 
@@ -56,6 +64,30 @@ def test_help_snapshot_starts_a_block_in_every_readme():
 def test_readme_help_snapshot_matches_cli(name):
     assert _snapshot(name) == _live_help(), (
         f"{name} 里的 `apkutils --help` 快照与真实输出不一致，请同步"
+    )
+
+
+def _live_zip_help():
+    result = CliRunner().invoke(main, ["zip", "--help"], prog_name="apkutils")
+    assert result.exit_code == 0, result.output
+    return result.output.rstrip("\n")
+
+
+def _zip_snapshot(name):
+    text = (REPO_ROOT / name).read_text(encoding="utf-8")
+    match = ZIP_HELP_BLOCK.search(text)
+    assert match, (
+        f"{name} 里找不到 `apkutils zip --help` 的快照代码块："
+        "要么被删了，要么不再是 `❯ apkutils zip --help` + 真实 help 输出的形式"
+    )
+    return match.group("body").rstrip("\n")
+
+
+@pytest.mark.parametrize("name", README_FILES)
+def test_zip_help_snapshot_matches_cli(name):
+    """README 里写进 `apkutils zip --help` 快照，就要钉住，否则会漂移。"""
+    assert _zip_snapshot(name) == _live_zip_help(), (
+        f"{name} 里的 `apkutils zip --help` 快照与真实输出不一致，请同步"
     )
 
 
