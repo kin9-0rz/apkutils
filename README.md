@@ -40,7 +40,7 @@ Commands:
 | `certs`    | 打印证书                                        |                                                                                                      |
 | `files`    | 打印归档内的文件                                |                                                                                                      |
 | `info`     | 打印包名、应用名、版本号、SDK 与证书            |                                                                                                      |
-| `manifest` | 打印清单原文，并列出 Package 与 Main Activities |                                                                                                      |
+| `manifest` | 打印清单原文，并列出 Package、Main Activities 与 Activity Aliases |                                                                                                      |
 | `mtds`     | 获取指定方法中的所有字符串                      | `-m` / `--method`                                                                                    |
 | `packages` | 列出所有的包                                    |                                                                                                      |
 | `strings`  | 打印 Dex 中的字符串                             |                                                                                                      |

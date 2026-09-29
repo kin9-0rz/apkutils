@@ -119,6 +119,9 @@ def manifest(path):
     print("Main Activities:")
     for item in apk.get_manifest_main_activities():
         print(" - {}".format(item))
+    print("Activity Aliases:")
+    for name, target in apk.get_manifest_activity_aliases().items():
+        print(" - {} -> {}".format(name, target))
 
 
 @main.command()

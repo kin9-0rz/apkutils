@@ -42,7 +42,7 @@ The CLI itself is Chinese-only, hence the help text above is shown verbatim.
 | `certs` | Print certificates | |
 | `files` | Print the files inside the archive | |
 | `info` | Print package name, app name, version, SDK and certificates | |
-| `manifest` | Print the raw manifest, plus Package and Main Activities | |
+| `manifest` | Print the raw manifest, plus Package, Main Activities and Activity Aliases | |
 | `mtds` | Print every string inside a given method | `-m` / `--method` |
 | `packages` | List all packages | |
 | `strings` | Print the strings in the Dex | |

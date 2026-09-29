@@ -63,3 +63,13 @@ _Avoid_：resources.arsc、arsc 文件
 **DEX**：
 APK 内的 Dalvik 可执行代码，一个包可含多个。类、方法、字符串、交叉引用（xref）、opcode 等索引视图按需构建。
 _Avoid_：dex 文件、代码
+
+### 启动入口
+
+**启动 Activity（main activity）**：
+清单中同一 `intent-filter` 内同时声明 `MAIN` 与 `LAUNCHER` 的组件，即系统启动该 APK 的入口。`activity-alias` 以别名本身计入；`targetActivity` 是实现细节，不属于入口。禁用（`enabled="false"`）的组件不计入。
+_Avoid_：主 Activity、launcher activity、入口页面
+
+**别名映射（alias map）**：
+清单中 `activity-alias` 的 `name`→`targetActivity` 映射，逆向分析用它从别名追到实现类；`targetActivity` 缺失时值为空。映射独立于启动 Activity 判定，覆盖全部别名。
+_Avoid_：别名表、alias list、target 表
