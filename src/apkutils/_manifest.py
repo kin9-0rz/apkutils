@@ -151,21 +151,21 @@ class ManifestReader:
 
     def _find_activities(self, soup):
         seen = set()
-        for tag in ("activity", "activity-alias"):
-            for item in soup.find_all(tag):
-                name = _expand_name(self.package_name, _attr(item, "name"))
-                if name is None or _is_disabled(item):
-                    continue
-                if not _has_launcher_filter(item):
-                    continue
-                if name in seen:
-                    continue
-                seen.add(name)
-                self.main_activities.append(name)
+        # 单遍按文档顺序遍历，入口判定对 activity 与 activity-alias 一视同仁
+        for item in soup.find_all(("activity", "activity-alias")):
+            name = _expand_name(self.package_name, _attr(item, "name"))
+            if name is None or _is_disabled(item):
+                continue
+            if not _has_launcher_filter(item):
+                continue
+            if name in seen:
+                continue
+            seen.add(name)
+            self.main_activities.append(name)
 
-                addr = _as_res_addr(_attr(item, "icon"))
-                if addr:
-                    self.activities_icon_addrs.append(addr)
+            addr = _as_res_addr(_attr(item, "icon"))
+            if addr:
+                self.activities_icon_addrs.append(addr)
 
         # 别名映射覆盖全部 activity-alias，与入口判定无关。
         for item in soup.find_all("activity-alias"):

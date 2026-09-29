@@ -159,6 +159,32 @@ def test_attr_tolerates_stripped_namespace_prefix():
     assert _attr(item, "enabled") == "false"
 
 
+def test_main_activities_preserve_document_order():
+    """入口判定对 activity / activity-alias 一视同仁，输出保持文档序。
+
+    回归：曾按 ("activity", "activity-alias") 两轮遍历，alias 排在 activity
+    前面时输出会被重排成 activity 组 → alias 组。
+    """
+    m = ManifestReader()
+    m.package_name = "com.foo"
+    soup = BeautifulSoup(
+        '<manifest {}><application>'
+        '<activity-alias android:name=".Alias" android:targetActivity=".Real">'
+        '<intent-filter><action android:name="android.intent.action.MAIN"/>'
+        '<category android:name="android.intent.category.LAUNCHER"/></intent-filter>'
+        '</activity-alias>'
+        '<activity android:name=".First">'
+        '<intent-filter><action android:name="android.intent.action.MAIN"/>'
+        '<category android:name="android.intent.category.LAUNCHER"/></intent-filter>'
+        '</activity>'
+        '</application></manifest>'.format(_NS),
+        "lxml-xml",
+    )
+    m._find_activities(soup)
+
+    assert m.main_activities == ["com.foo.Alias", "com.foo.First"]
+
+
 def test_reads_package_version_and_launcher():
     m = ManifestReader(_manifest_bytes("test.zip"))
 
