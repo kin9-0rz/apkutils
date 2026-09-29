@@ -71,5 +71,5 @@ _Avoid_：dex 文件、代码
 _Avoid_：主 Activity、launcher activity、入口页面
 
 **别名映射（alias map）**：
-清单中 `activity-alias` 的 `name`→`targetActivity` 映射，逆向分析用它从别名追到实现类；`targetActivity` 缺失时值为空。映射独立于启动 Activity 判定，覆盖全部别名。
+清单中 `activity-alias` 的 `name`→`targetActivity` 映射，逆向分析用它从别名追到实现类；`targetActivity` 缺失时值为 `None`。映射独立于启动 Activity 判定，覆盖全部别名。
 _Avoid_：别名表、alias list、target 表
