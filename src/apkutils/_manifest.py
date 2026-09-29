@@ -1,7 +1,7 @@
 """AndroidManifest.xml 读取。
 
 `ManifestReader` 的 interface 只吃 AndroidManifest.xml 的原始 bytes，
-吐出一个可查询的清单模型：包名、版本、SDK 区间、启动 Activity、
+吐出一个可查询的清单模型：包名、版本、SDK 区间、启动 Activity、别名映射、
 application 的 name / icon / label 资源地址。
 
 它不碰 zip，也不碰 ARSC —— 那些是 facade 与其它 module 的事。
@@ -16,9 +16,59 @@ from apkutils.axml import AXMLPrinter
 
 MANIFEST_NAME = "AndroidManifest.xml"
 
+MAIN_ACTION = "android.intent.action.MAIN"
+LAUNCHER_CATEGORY = "android.intent.category.LAUNCHER"
+
 
 class ManifestError(Exception):
     """AndroidManifest.xml 无法解析。"""
+
+
+def _attr(tag, name):
+    """取 ``android:<name>`` 属性值，兼容类名前缀被剥落的清单。
+
+    清单缺少 ``xmlns:android`` 声明时，``lxml-xml`` 会把 ``android:x`` 的
+    前缀剥掉（key 变成 ``x``）；两种 key 都尝试，缺失返回 ``None``。
+    """
+    value = tag.get("android:" + name)
+    if value is None:
+        value = tag.get(name)
+    return value
+
+
+def _expand_name(package_name, name):
+    """按 Android 规则把组件名展开成全限定名。
+
+    ``.`` 开头 → ``包名 + 名字``；不含 ``.`` → ``包名 + "." + 名字``；
+    否则原样。缺失（``None`` / 空串）返回 ``None``，调用方据此跳过。
+    """
+    if not name:
+        return None
+    if name.startswith("."):
+        return package_name + name
+    if "." not in name:
+        return package_name + "." + name
+    return name
+
+
+def _is_disabled(tag):
+    """组件是否显式声明 ``android:enabled="false"``。"""
+    return str(_attr(tag, "enabled") or "").lower() == "false"
+
+
+def _has_launcher_filter(item):
+    """同一 intent-filter 内是否同时声明 MAIN 与 LAUNCHER。
+
+    两个 intent-filter 各声明一个的拆分写法不构成启动入口。
+    """
+    for intent_filter in item.find_all("intent-filter"):
+        actions = {_attr(node, "name") for node in intent_filter.find_all("action")}
+        categories = {
+            _attr(node, "name") for node in intent_filter.find_all("category")
+        }
+        if MAIN_ACTION in actions and LAUNCHER_CATEGORY in categories:
+            return True
+    return False
 
 
 class ManifestReader:
@@ -38,6 +88,7 @@ class ManifestReader:
         self.target_sdk_version = 1
         self.max_sdk_version = 0xFF
         self.main_activities = []
+        self.aliases = {}
         self.application = ""
         self.application_icon_addr = ""
         self.application_label_id = ""
@@ -71,52 +122,59 @@ class ManifestReader:
 
         manifest_tag = soup.manifest
         if manifest_tag is not None:
-            self.package_name = str(manifest_tag.get("package", ""))
-            self.version_code = manifest_tag.get("android:versionCode")
-            self.version_name = manifest_tag.get("android:versionName")
+            self.package_name = str(_attr(manifest_tag, "package") or "")
+            self.version_code = _attr(manifest_tag, "versionCode")
+            self.version_name = _attr(manifest_tag, "versionName")
 
         uses_sdk = soup.select_one("uses-sdk")
         if uses_sdk is None:
             uses_sdk = {}
-        self.min_sdk_version = uses_sdk.get("android:minSdkVersion", 1)
-        self.target_sdk_version = uses_sdk.get("android:targetSdkVersion", -1)
-        self.max_sdk_version = uses_sdk.get("android:maxSdkVersion", 0xFF)
+        self.min_sdk_version = _attr(uses_sdk, "minSdkVersion")
+        if self.min_sdk_version is None:
+            self.min_sdk_version = 1
+        self.target_sdk_version = _attr(uses_sdk, "targetSdkVersion")
+        if self.target_sdk_version is None:
+            self.target_sdk_version = -1
+        self.max_sdk_version = _attr(uses_sdk, "maxSdkVersion")
+        if self.max_sdk_version is None:
+            self.max_sdk_version = 0xFF
 
         application_tag = soup.application
         if application_tag is None:
             return
 
-        self.application = application_tag.get("android:name", "")
-        self.application_icon_addr = _as_res_addr(application_tag.get("android:icon"))
-        self.application_label_id = _as_label(application_tag.get("android:label"))
+        self.application = _attr(application_tag, "name") or ""
+        self.application_icon_addr = _as_res_addr(_attr(application_tag, "icon"))
+        self.application_label_id = _as_label(_attr(application_tag, "label"))
 
         self._find_activities(soup)
 
     def _find_activities(self, soup):
-        for tag in ("activity", "activity-alias"):
-            for item in soup.select(tag):
-                name = str(item.get("android:name", "none"))
-                if name.startswith("."):
-                    name = self.package_name + name
+        seen = set()
+        # 单遍按文档顺序遍历，入口判定对 activity 与 activity-alias 一视同仁
+        for item in soup.find_all(("activity", "activity-alias")):
+            name = _expand_name(self.package_name, _attr(item, "name"))
+            if name is None or _is_disabled(item):
+                continue
+            if not _has_launcher_filter(item):
+                continue
+            if name in seen:
+                continue
+            seen.add(name)
+            self.main_activities.append(name)
 
-                if item.get("android:enabled", True) is False:
-                    continue
+            addr = _as_res_addr(_attr(item, "icon"))
+            if addr:
+                self.activities_icon_addrs.append(addr)
 
-                content = item.encode_contents().decode("utf-8")
-                if "android.intent.action.MAIN" not in content:
-                    continue
-                if "android.intent.category.LAUNCHER" not in content:
-                    continue
-
-                self.main_activities.append(name)
-
-                addr = _as_res_addr(item.get("android:icon"))
-                if addr:
-                    self.activities_icon_addrs.append(addr)
-
-                target_activity = item.get("android:targetActivity", None)
-                if target_activity:
-                    self.main_activities.append(target_activity)
+        # 别名映射覆盖全部 activity-alias，与入口判定无关。
+        for item in soup.find_all("activity-alias"):
+            name = _expand_name(self.package_name, _attr(item, "name"))
+            if name is None:
+                continue
+            self.aliases[name] = _expand_name(
+                self.package_name, _attr(item, "targetActivity")
+            )
 
 
 def _as_res_addr(value):

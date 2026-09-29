@@ -154,6 +154,9 @@ class APK:
     def get_manifest_main_activities(self):
         return self._manifest.main_activities
 
+    def get_manifest_activity_aliases(self):
+        return self._manifest.aliases
+
     def get_manifest_application(self):
         return self._manifest.application
 
