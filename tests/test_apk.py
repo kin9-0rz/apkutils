@@ -166,3 +166,63 @@ def test_no_manifest_is_only_parsed_once(monkeypatch):
         assert apk.get_manifest() == ""
 
         assert len(calls) == 1
+
+
+def test_manifest_accessors_parse_on_demand():
+    # README 记的用法：只要清单的话不必先调 parse_resource()
+    fixtures = os.path.abspath(os.path.join(os.path.dirname(__file__), "fixtures"))
+
+    with APK.from_file(os.path.join(fixtures, "test.zip")) as apk:
+        assert apk.package_name == "com.example.hellojni"
+        assert apk.version_name == "1.0"
+        assert apk.min_sdk_version == "18"
+        assert apk.target_sdk_version == "21"
+        # max_sdk 未声明，保留默认值
+        assert apk.max_sdk_version == 255
+
+        assert apk.get_package_name() == "com.example.hellojni"
+        assert apk.get_manifest_main_activities() == [
+            "com.example.hellojni.MainActivity"
+        ]
+        assert apk.get_manifest_activity_aliases() == {}
+        assert apk.get_manifest_application() == ""
+
+        assert apk.errors == []
+
+
+def test_manifest_accessors_parse_at_most_once(monkeypatch):
+    fixtures = os.path.abspath(os.path.join(os.path.dirname(__file__), "fixtures"))
+
+    with APK.from_file(os.path.join(fixtures, "test.zip")) as apk:
+        calls = []
+        original = apk._init_manifest
+
+        def spy():
+            calls.append(1)
+            return original()
+
+        monkeypatch.setattr(apk, "_init_manifest", spy)
+
+        assert apk.package_name == "com.example.hellojni"
+        assert apk.version_name == "1.0"
+        assert apk.get_manifest_main_activities() == [
+            "com.example.hellojni.MainActivity"
+        ]
+
+        assert len(calls) == 1
+
+
+def test_manifest_accessor_records_error_on_broken_manifest():
+    data = _apk_bytes({"AndroidManifest.xml": b"not an axml"})
+
+    with APK.from_bytes(data) as apk:
+        assert apk.package_name == ""
+        assert [err.part for err in apk.errors] == ["manifest"]
+
+
+def test_manifest_accessor_raises_in_strict_mode():
+    data = _apk_bytes({"AndroidManifest.xml": b"not an axml"})
+
+    with APK.from_bytes(data, strict=True) as apk:
+        with pytest.raises(ManifestError):
+            apk.get_package_name()

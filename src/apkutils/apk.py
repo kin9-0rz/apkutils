@@ -122,6 +122,16 @@ class APK:
             self._init_manifest()
         return self.manifest
 
+    def _ensure_manifest(self):
+        """按需解析清单，返回 ``ManifestReader``。
+
+        与 ``_ensure_dex()`` 对称：清单访问器都从这里取 ``self._manifest``，
+        不要直接读该属性——它只是个空壳，内容由 ``_init_manifest()`` 填。
+        """
+        if not self._manifest_loaded:
+            self._init_manifest()
+        return self._manifest
+
     def _init_manifest(self):
         if self._manifest_loaded:
             return
@@ -146,35 +156,35 @@ class APK:
 
     @property
     def package_name(self):
-        return self._manifest.package_name
+        return self._ensure_manifest().package_name
 
     def get_package_name(self):
-        return self._manifest.package_name
+        return self._ensure_manifest().package_name
 
     def get_manifest_main_activities(self):
-        return self._manifest.main_activities
+        return self._ensure_manifest().main_activities
 
     def get_manifest_activity_aliases(self):
-        return self._manifest.aliases
+        return self._ensure_manifest().aliases
 
     def get_manifest_application(self):
-        return self._manifest.application
+        return self._ensure_manifest().application
 
     @property
     def version_name(self):
-        return self._manifest.version_name
+        return self._ensure_manifest().version_name
 
     @property
     def min_sdk_version(self):
-        return self._manifest.min_sdk_version
+        return self._ensure_manifest().min_sdk_version
 
     @property
     def target_sdk_version(self):
-        return self._manifest.target_sdk_version
+        return self._ensure_manifest().target_sdk_version
 
     @property
     def max_sdk_version(self):
-        return self._manifest.max_sdk_version
+        return self._ensure_manifest().max_sdk_version
 
     # * -------------------------- DEX --------------------------------------
 
