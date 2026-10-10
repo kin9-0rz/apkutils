@@ -340,3 +340,24 @@ def test_reads_manifest_with_inflated_chunk_headers(caplog):
 
     # 填充数据要留痕，但不能降级成“解析失败”
     assert any("填充数据" in r.getMessage() for r in caplog.records)
+
+
+def test_is_packed_detects_inflated_chunk_headers():
+    """chunk 头的 ``headerSize`` 超标是加壳痕迹，``is_packed()`` 必须报出来。
+
+    回归：解析其实已经检出了这份清单的头部膨胀（``verify_chunk_header_size``
+    与 ``skip_header_padding`` 都在告警），但 ``is_packed()`` 只读 decoy 属性
+    那条线索，于是加壳文件被报成未加壳。
+    """
+    data = _manifest_bytes("packed_kiwisec.zip")
+    assert AXMLPrinter(data, True).is_packed() is True
+
+
+@pytest.mark.parametrize(
+    "fixture",
+    ["test.zip", "test_am_0908.zip", "kotlin-app.zip", "i15.zip", "youtube.zip"],
+)
+def test_is_packed_false_for_unpacked_manifest(fixture):
+    """未加壳的清单不能被头部膨胀这条线索误报。"""
+    data = _manifest_bytes(fixture)
+    assert AXMLPrinter(data, True).is_packed() is False
