@@ -88,7 +88,7 @@ app_name = apk.app_name
 icons = apk.get_app_icons()
 apk.close()
 
-# The manifest alone needs no parse_resource(): its fields parse on demand
+# Or skip parse_resource(): each field parses the part it needs
 with APK.from_file(file_path) as apk:
     print(apk.package_name, apk.version_name)
 

@@ -226,3 +226,68 @@ def test_manifest_accessor_raises_in_strict_mode():
     with APK.from_bytes(data, strict=True) as apk:
         with pytest.raises(ManifestError):
             apk.get_package_name()
+
+
+def test_app_name_alone_pulls_its_dependencies():
+    # app_name 依赖清单 + arsc + 子文件，取它就得把这条链拉起来
+    fixtures = os.path.abspath(os.path.join(os.path.dirname(__file__), "fixtures"))
+
+    with APK.from_file(os.path.join(fixtures, "test.zip")) as apk:
+        assert apk.app_name == "hellojni"
+        assert apk.get_arsc() is not None
+
+
+def test_resource_and_metadata_accessors_parse_on_demand():
+    # arsc 与应用元数据同样按需解析，不必先调 parse_resource()
+    fixtures = os.path.abspath(os.path.join(os.path.dirname(__file__), "fixtures"))
+
+    with APK.from_file(os.path.join(fixtures, "test.zip")) as apk:
+        assert apk.get_arsc() is not None
+        assert apk.app_name == "hellojni"
+        assert "res/drawable-xxhdpi-v4/ic_launcher.png" in apk.get_app_icons()
+
+        assert apk.errors == []
+
+
+def test_resource_and_metadata_accessors_parse_at_most_once(monkeypatch):
+    fixtures = os.path.abspath(os.path.join(os.path.dirname(__file__), "fixtures"))
+
+    with APK.from_file(os.path.join(fixtures, "test.zip")) as apk:
+        arsc_calls = []
+        meta_calls = []
+        original_arsc = apk._init_arsc
+        original_meta = apk._init_app_metadata
+
+        def spy_arsc():
+            arsc_calls.append(1)
+            return original_arsc()
+
+        def spy_meta():
+            meta_calls.append(1)
+            return original_meta()
+
+        monkeypatch.setattr(apk, "_init_arsc", spy_arsc)
+        monkeypatch.setattr(apk, "_init_app_metadata", spy_meta)
+
+        assert apk.get_arsc() is not None
+        assert apk.app_name == "hellojni"
+        assert apk.get_app_icons() != []
+
+        assert len(arsc_calls) == 1
+        assert len(meta_calls) == 1
+
+
+def test_arsc_accessor_records_error_on_broken_arsc():
+    data = _apk_bytes({"resources.arsc": b"not an arsc"})
+
+    with APK.from_bytes(data) as apk:
+        assert apk.get_arsc() is None
+        assert [err.part for err in apk.errors] == ["arsc"]
+
+
+def test_arsc_accessor_raises_in_strict_mode():
+    data = _apk_bytes({"resources.arsc": b"not an arsc"})
+
+    with APK.from_bytes(data, strict=True) as apk:
+        with pytest.raises(ResourceTableError):
+            apk.get_arsc()
