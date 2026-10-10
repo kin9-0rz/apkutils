@@ -99,3 +99,24 @@ def test_python_version_classifiers_cover_the_lower_bound():
             f"requires-python 下限 {floor_version} 没有对应的 classifier："
             "下限版本明明可装，徽章上却不会出现"
         )
+
+
+def test_pyproject_emits_no_license_classifier():
+    """license 只走 PEP 639 表达式，不再发 `License ::` classifier。
+
+    这个 classifier 曾是「shields pypi/l 的兜底路径」，但 shields 的取值顺序把
+    它排在最后：`services/pypi/pypi-helpers.js` 的 `getLicenses()` 先读
+    `info.license_expression`（命中即返回，见 badges/shields#11001），再读
+    `info.license`（且要求长度 < 40），最后才回落到 `License ::` classifier。
+    本仓库的产物一直带着 `License-Expression: MIT`，那条兜底分支永远走不到。
+
+    留下一份不产生任何效果的重复声明，代价是 PEP 639 已废弃 license
+    classifiers，`uv build` 每次构建都会为此打印一条告警。所以钉死：不许再加回来。
+    """
+    classifiers = _load_pyproject()["project"].get("classifiers", [])
+
+    offenders = [c for c in classifiers if c.startswith("License ::")]
+    assert not offenders, (
+        f"不该声明 {offenders}：许可证已由 project.license 以 SPDX 表达式给出，"
+        "重复的 license classifier 不影响 shields 徽章，只会触发 PEP 639 废弃告警"
+    )
