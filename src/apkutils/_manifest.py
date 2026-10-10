@@ -25,15 +25,27 @@ class ManifestError(Exception):
 
 
 def _attr(tag, name):
-    """取 ``android:<name>`` 属性值，兼容类名前缀被剥落的清单。
+    """取 ``android:<name>`` 属性值，兼容前缀被剥落或改名的清单。
 
-    清单缺少 ``xmlns:android`` 声明时，``lxml-xml`` 会把 ``android:x`` 的
-    前缀剥掉（key 变成 ``x``）；两种 key 都尝试，缺失返回 ``None``。
+    1. 正常情况：``android:name``。
+    2. 缺少 ``xmlns:android`` 声明时，``lxml-xml`` 会把 ``android:x`` 的
+       前缀剥掉（key 变成 ``x``）。
+    3. 加固工具可能抹掉字符串池里的 ``android`` 前缀字符串，只留下 URI，
+       ``lxml`` 会自己另起一个前缀（``ns0:name``，编号不定）。这种情况下
+       前缀名不可预测，只能按 local name 兜底匹配。
+
+    缺失返回 ``None``。
     """
     value = tag.get("android:" + name)
     if value is None:
         value = tag.get(name)
-    return value
+    if value is not None:
+        return value
+
+    for key, candidate in tag.attrs.items():
+        if key.rsplit(":", 1)[-1] == name:
+            return candidate
+    return None
 
 
 def _expand_name(package_name, name):
