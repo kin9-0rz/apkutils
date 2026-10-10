@@ -291,3 +291,38 @@ def test_arsc_accessor_raises_in_strict_mode():
     with APK.from_bytes(data, strict=True) as apk:
         with pytest.raises(ResourceTableError):
             apk.get_arsc()
+
+
+def test_dex_hex_strings_accessor_parses_on_demand():
+    # get_dex_hex_strings() 同样按需解析，不必先调 parse_dex()
+    fixtures = os.path.abspath(os.path.join(os.path.dirname(__file__), "fixtures"))
+
+    with APK.from_file(os.path.join(fixtures, "test.zip")) as apk:
+        assert len(apk.get_dex_hex_strings()) == 8594
+        assert apk.errors == []
+
+
+def test_dex_hex_strings_accessor_parses_at_most_once(monkeypatch):
+    fixtures = os.path.abspath(os.path.join(os.path.dirname(__file__), "fixtures"))
+
+    with APK.from_file(os.path.join(fixtures, "test.zip")) as apk:
+        calls = []
+        original = apk._init_dex_files
+
+        def spy():
+            calls.append(1)
+            return original()
+
+        monkeypatch.setattr(apk, "_init_dex_files", spy)
+
+        assert len(apk.get_dex_hex_strings()) == 8594
+        assert len(apk.get_dex_hex_strings()) == 8594
+
+        assert len(calls) == 1
+
+
+def test_dex_hex_strings_accessor_on_archive_without_dex():
+    # 没有 DEX 的归档：空列表而非 None，且不记错误
+    with APK.from_bytes(_apk_bytes({"dummy.txt": b"x"})) as apk:
+        assert apk.get_dex_hex_strings() == []
+        assert apk.errors == []

@@ -242,9 +242,7 @@ class APK:
         return self._ensure_dex().strings()
 
     def get_dex_hex_strings(self):
-        if self._dex is None:
-            return None
-        return self._dex.hex_strings()
+        return self._ensure_dex().hex_strings()
 
     def get_dex_opcodes(self):
         return self._ensure_dex().opcodes_list()
