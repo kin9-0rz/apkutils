@@ -159,6 +159,27 @@ def test_attr_tolerates_stripped_namespace_prefix():
     assert _attr(item, "enabled") == "false"
 
 
+def test_attr_tolerates_renamed_namespace_prefix():
+    """前缀被改名时（``ns0:``）仍能取到属性值。
+
+    回归：加固工具抹掉字符串池里的 ``android`` 前缀字符串后，lxml 会自己另起
+    一个编号不定的前缀。``_attr`` 只认 ``android:`` / 无前缀，于是 versionCode、
+    versionName、minSdkVersion 全部读成 ``None``，回落到默认值 1 / -1。
+    """
+    soup = BeautifulSoup(
+        '<manifest xmlns:ns0="http://schemas.android.com/apk/res/android" '
+        'ns0:versionCode="114"><application>'
+        '<activity ns0:name=".A" ns0:enabled="false"/>'
+        "</application></manifest>",
+        "lxml-xml",
+    )
+    item = soup.activity
+    assert _attr(item, "name") == ".A"
+    assert _attr(item, "enabled") == "false"
+    assert _attr(soup.manifest, "versionCode") == "114"
+    assert _attr(item, "missing") is None
+
+
 def test_main_activities_preserve_document_order():
     """入口判定对 activity / activity-alias 一视同仁，输出保持文档序。
 
@@ -267,3 +288,55 @@ def test_packed_trap_attributes_are_dropped_quietly(caplog):
 
     # 丢弃 decoy 不等于放过加固文件：仍需标记为 packed
     assert AXMLPrinter(data, True).is_packed() is True
+
+
+def test_reads_manifest_with_inflated_chunk_headers(caplog):
+    """kiwisec 加固：chunk 头被调大并塞入填充数据，清单仍应完整读出。
+
+    回归：这份清单曾以 "AndroidManifest.xml 解析为空" 失败，包名、版本、
+    启动 Activity 全部读不出来。加固手法有四处：
+
+    1. AXML 根 chunk ``headerSize`` 8→16，头部后面插 8 字节填充；
+    2. 字符串池 ``headerSize`` 28→32，头部末尾插 4 字节填充，
+       且 ``stringsStart`` 只补了这 4 字节——偏移数组之后另插的 12 字节没补，
+       因此字符串数据并不紧跟在偏移数组后面，必须按 chunk 起点换算；
+    3. 资源映射表 ``headerSize`` 8→24，ID 之前插 16 字节填充；
+    4. namespace chunk ``size`` 被调大，固定字段之后挂了 20 字节垃圾。
+
+    第 4 点曾让解析游标错位 20 字节：namespace chunk 读完 prefix/uri 后直接
+    ``continue``，没有对齐到 chunk 末尾，之后每个 chunk 都从垃圾里读头。
+    """
+    data = _manifest_bytes("packed_kiwisec.zip")
+
+    with caplog.at_level(logging.WARNING, logger="axml"):
+        m = ManifestReader(data)
+
+    assert m.package_name == "com.hnmtd.clean"
+    assert m.version_code == "114"
+    assert m.version_name == "1.1.4"
+    # 不再回落到 1 / -1 的默认值
+    assert m.min_sdk_version == "24"
+    assert m.target_sdk_version == "34"
+
+    assert m.application == "com.kiwivm.security.StubApplication"
+    assert m.application_label_id == "0x7f120058"
+    assert m.application_icon_addr == "0x7f0f01f5"
+
+    # 唯一带 MAIN + LAUNCHER 的入口，以及两个 activity-alias
+    assert m.main_activities == ["com.cssq.clear.ui.activity.SplashActivity"]
+    assert set(m.aliases) == {
+        "com.hnmtd.clean.wxapi.WXEntryActivity",
+        "com.hnmtd.clean.wxapi.WXPayEntryActivity",
+    }
+
+    # 字符串池完整解开（451 条），不是解析到一半就放弃
+    printer = AXMLPrinter(data, True)
+    assert len(printer.axml.sb) == 451
+    assert printer.axml.sb[0] == "theme"
+    assert printer.axml.sb[450] == "KWS_MAIN_APP"
+
+    # 资源映射表的 ID 与字符串池前几项对齐
+    assert printer.axml.m_resourceIDs[:3] == [0x01010000, 0x01010001, 0x01010002]
+
+    # 填充数据要留痕，但不能降级成“解析失败”
+    assert any("填充数据" in r.getMessage() for r in caplog.records)

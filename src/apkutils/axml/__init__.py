@@ -7,8 +7,8 @@ from enum import Enum
 from struct import pack, unpack
 from xml.sax.saxutils import escape
 
-from lxml import etree
 import lxml
+from lxml import etree
 
 from apkutils.axml import bytecode, public
 
@@ -158,6 +158,25 @@ def verify_chunk_header_size(ctype: int, header_size: int):
         return -1
 
     return 0
+
+
+def skip_header_padding(buff: bytecode.BuffHandle, header: "ResChunkHeader"):
+    """跳过 chunk 头里超出 ``ResChunk_header`` 的填充字节。
+
+    ``ResChunkHeader`` 固定只读 8 字节，chunk 体从这 8 字节之后开始；但
+    ``headerSize`` 声明的头部可能更长。加固工具会在多出来的字节里塞随机数据
+    并把 ``headerSize`` 一并调大，这些字节不属于 chunk 体，解析前必须跳过，
+    否则下一个 chunk 会被读成随机数。
+
+    ``headerSize`` 有时只是被调大而没有真的插入数据（部分加固工具对 XML 节点
+    chunk 就是这样），所以这里不校验内容，只按声明的长度前进。
+    """
+    extra = header.header_size - ResChunkHeader.HEADER_SIZE
+    if extra > 0:
+        log.warning(
+            "[ResChunk] 跳过头部填充数据 {} 字节, Offset={}".format(extra, header.start)
+        )
+        buff.read(extra)
 
 
 class ResChunkHeader:
@@ -380,6 +399,22 @@ class ResStringPoolHeader:
                 "This is not a problem but could indicate packers."
             )
 
+        # ResStringPool_header 本体是 28 字节，但 headerSize 可能被加固工具调大，
+        # 多出来的字节就塞在头部末尾。偏移数组紧跟头部，因此必须把读取位置对齐到
+        # chunk 起点 + headerSize，而不是默认的 28 字节处。
+        header_end = self.header.start + max(self.header.header_size, 0x1C)
+        if buff.get_idx() != header_end:
+            extra = header_end - buff.get_idx()
+            if extra > 0:
+                log.warning(
+                    "[StringPool] 跳过头部填充数据 %d 字节, Offset=%d",
+                    extra,
+                    self.header.start,
+                )
+                buff.read(extra)
+            else:
+                buff.set_idx(header_end)
+
         self.m_stringOffsets = []
         self.m_styleOffsets = []
         self.m_charbuff = ""
@@ -413,6 +448,11 @@ class ResStringPoolHeader:
 
         if (size % 4) != 0:
             log.warning("Size of strings is not aligned by four bytes.")
+
+        # stringsStart 相对 chunk 起点（见 ResourceTypes.h），因此头部或偏移数组被
+        # 插填充时，字符串数据并不紧跟在偏移数组后面。回到 chunk 起点换算绝对位置。
+        if buff.get_idx() != self.header.start + self.stringsOffset:
+            buff.set_idx(self.header.start + self.stringsOffset)
 
         self.m_charbuff = buff.read(size)
 
@@ -598,6 +638,7 @@ class ResStringPoolHeader:
 
         return length, size
 
+
 # AXMLParser 专用事件
 START_DOCUMENT = 0
 END_DOCUMENT = 1
@@ -658,9 +699,9 @@ class AXMLParser:
 
         self.filesize = axml_header.size
 
-        if axml_header.header_size != 8:
-            self._valid = False
-            return
+        # headerSize 被调大时，头部后面是加固工具插入的填充字节，它们不属于 chunk 体。
+        # 跳过它们，下一个 chunk（String Pool）才会落在正确的位置。
+        skip_header_padding(self.buff, axml_header)
 
         if self.filesize > self.buff.size():
             self._valid = False
@@ -680,10 +721,13 @@ class AXMLParser:
             self._valid = False
             return
 
-        if header.header_size != 0x1C:
+        if header.header_size < 0x1C:
             self._valid = False
             return
 
+        # 注意：字符串池头部的多余字节位于头部末尾（在 styleStart 之后），
+        # 不能在这里跳。ResStringPoolHeader 自己会把读取位置对齐到
+        # chunk 起点 + headerSize，详见那里的说明。
         self.sb = ResStringPoolHeader(self.buff, header, is_android_manifest)
 
         # Stores resource ID mappings, if any
@@ -742,6 +786,10 @@ class AXMLParser:
                     self._valid = False
                     return
 
+                # 资源 ID 的个数按 (size - headerSize) 算，起点也必须对齐到
+                # headerSize 声明的头部末尾，否则会从填充数据开始读。
+                skip_header_padding(self.buff, h)
+
                 for i in range((h.size - h.header_size) // 4):
                     self.m_resourceIDs.append(unpack("<L", self.buff.read(4))[0])
                 continue
@@ -758,16 +806,17 @@ class AXMLParser:
                 self.buff.set_idx(h.end)
                 continue
 
-            # Check that we read a correct header
+            # Check that we read a correct header.
+            # XML 节点 chunk 的字段位置由结构固定在 8 字节通用头之后（lineNumber
+            # 在 +8），加固工具只会把 headerSize 调大当掩护，真实数据仍在标准位置。
+            # 因此这里只告警，不按 headerSize 跳位——那反而会把字段读错位。
             if h.header_size != 0x10:
-                log.error(
+                log.warning(
                     "XML Resource Type Chunk header size does not match 16! "
-                    "At chunk type 0x{:04x}, declared header size={}, chunk size={}".format(
+                    "At chunk type 0x{:04x}, declared header size={}, chunk size={}".format(  # noqa: E501
                         h.type, h.header_size, h.size
                     )
                 )
-                self._valid = False
-                return
 
             # Line Number of the source file, only used as meta information
             (self.m_lineNumber,) = unpack("<L", self.buff.read(4))
@@ -811,7 +860,9 @@ class AXMLParser:
                 self.namespaces.append((prefix, uri))
 
                 # We can continue with the next chunk, as we store the namespace
-                # mappings for each tag
+                # mappings for each tag. 对齐到 chunk 末尾：加固工具会把 namespace
+                # chunk 的 size 调大（尾部塞垃圾），固定字段读完不代表读完了 chunk。
+                self.buff.set_idx(h.end)
                 continue
 
             if h.type == RES_XML_END_NAMESPACE_TYPE:
@@ -829,6 +880,7 @@ class AXMLParser:
 
                 # We can continue with the next chunk, as we store the namespace
                 # mappings for each tag
+                self.buff.set_idx(h.end)
                 continue
 
             # START_TAG is the start of a new tag.
@@ -1265,7 +1317,9 @@ class AXMLPrinter:
 
             if _type == END_TAG:
                 if not cur:
-                    log.warning("Too many END_TAG! No more elements available to attach to!")
+                    log.warning(
+                        "Too many END_TAG! No more elements available to attach to!"
+                    )
 
                 name = self.axml.name
                 uri = self._print_namespace(self.axml.namespace)
