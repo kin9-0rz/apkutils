@@ -259,6 +259,8 @@ class DexReader:
         self._dex_hex_strings = list(hex_str_set)
 
     def hex_strings(self):
+        if self._dex_hex_strings is None:
+            self._init_strings()
         return self._dex_hex_strings
 
 

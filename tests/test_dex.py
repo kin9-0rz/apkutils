@@ -36,6 +36,19 @@ def test_reads_classes_and_strings():
     assert b"hellojni" in reader.strings()
 
 
+def test_hex_strings_parses_on_demand():
+    # hex_strings() 自己触发字符串池初始化，不必先调 strings()
+    reader = DexReader(_dex_blobs("test.zip"))
+
+    assert len(reader.hex_strings()) == 8594
+
+
+def test_hex_strings_on_empty_reader_is_empty_not_none():
+    reader = DexReader([])
+
+    assert reader.hex_strings() == []
+
+
 def test_opcodes_for_a_method():
     reader = DexReader(_dex_blobs("test.zip"))
 
