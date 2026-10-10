@@ -86,7 +86,7 @@ app_name = apk.app_name
 icons = apk.get_app_icons()
 apk.close()
 
-# 只要清单的话不必先调 parse_resource()：清单字段自己会按需解析
+# 也可以不调 parse_resource()：拿哪个字段就解析哪部分
 with APK.from_file(file_path) as apk:
     print(apk.package_name, apk.version_name)
 

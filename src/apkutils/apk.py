@@ -45,11 +45,13 @@ class APK:
         self._manifest = ManifestReader()
         self._manifest_loaded = False
         self._resources = ResourceTable()
+        self._arsc_loaded = False
         self._dex = None
         self._certs = {}
         self.arsc = None
         self._app_icons: list | None = None
         self._app_name = None
+        self._app_metadata_loaded = False
         self.trees = None  # 代码结构序列字典
         """应用名的KEY"""
 
@@ -75,9 +77,9 @@ class APK:
         Returns:
             _type_: _description_
         """
-        self._init_manifest()
-        self._init_arsc()
-        self._init_app_metadata()  # 依赖 manifest, arsc, 子文件列表
+        self._ensure_manifest()
+        self._ensure_arsc()
+        self._ensure_app_metadata()  # 依赖 manifest, arsc, 子文件列表
         return self
 
     def parse_dex(self):
@@ -301,6 +303,10 @@ class APK:
             self._fail("subfiles", err, name)
 
     def _init_arsc(self):
+        if self._arsc_loaded:
+            return
+        self._arsc_loaded = True
+
         data = None
         try:
             if ARSC_NAME in self.afile.namelist():
@@ -318,17 +324,45 @@ class APK:
         # FIXME: 这个包名可能与清单的不一样
         self.arsc = self._resources.parser
 
-    def get_arsc(self):
+    def _ensure_arsc(self):
+        """按需解析资源表，返回资源表解析器。
+
+        :returns: 资源表解析器；归档没有资源表或解析失败时为 ``None``
+        """
+        if not self._arsc_loaded:
+            self._init_arsc()
         return self.arsc
 
+    def get_arsc(self):
+        return self._ensure_arsc()
+
     def get_app_icons(self):
+        self._ensure_app_metadata()
         return self._app_icons
 
     @property
     def app_name(self):
+        self._ensure_app_metadata()
         return self._app_name
 
+    def _ensure_app_metadata(self):
+        """按需解析应用图标与应用名。
+
+        依赖清单、资源表与子文件列表，缺哪个先补哪个；结果落在
+        ``self._app_icons`` 与 ``self._app_name``，失败时保持默认值。
+        """
+        if self._app_metadata_loaded:
+            return
+
+        self._ensure_manifest()
+        self._ensure_arsc()
+        self._init_app_metadata()
+
     def _init_app_metadata(self):
+        if self._app_metadata_loaded:
+            return
+        self._app_metadata_loaded = True
+
         try:
             meta = AppMetadata(self._manifest, self._resources, self.get_subfiles())
         except AppMetadataError as e:
