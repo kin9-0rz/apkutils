@@ -1731,9 +1731,6 @@ class ARSCParser:
         if self.packageCount < 1:
             log.warning("至少要有一个包!")
 
-        # 解析完毕之后，下一个一定是一个字符串池
-        is_string_pool = True
-
         # 直接跳到后面数据块的开头，一般情况下，这个值是12。
         self.buff.set_idx(self.header.start + self.header.header_size)
         log.info("当前的地址是: {}".format(self.buff.get_idx()))
