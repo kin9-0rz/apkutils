@@ -170,6 +170,8 @@ def skip_header_padding(buff: bytecode.BuffHandle, header: "ResChunkHeader"):
 
     ``headerSize`` 有时只是被调大而没有真的插入数据（部分加固工具对 XML 节点
     chunk 就是这样），所以这里不校验内容，只按声明的长度前进。
+
+    :returns: 实际跳过的字节数，0 表示没跳
     """
     extra = header.header_size - ResChunkHeader.HEADER_SIZE
     if extra > 0:
@@ -177,6 +179,9 @@ def skip_header_padding(buff: bytecode.BuffHandle, header: "ResChunkHeader"):
             "[ResChunk] 跳过头部填充数据 {} 字节, Offset={}".format(extra, header.start)
         )
         buff.read(extra)
+        return extra
+
+    return 0
 
 
 class ResChunkHeader:
@@ -402,6 +407,7 @@ class ResStringPoolHeader:
         # ResStringPool_header 本体是 28 字节，但 headerSize 可能被加固工具调大，
         # 多出来的字节就塞在头部末尾。偏移数组紧跟头部，因此必须把读取位置对齐到
         # chunk 起点 + headerSize，而不是默认的 28 字节处。
+        self.header_size_inflated = False
         header_end = self.header.start + max(self.header.header_size, 0x1C)
         if buff.get_idx() != header_end:
             extra = header_end - buff.get_idx()
@@ -411,6 +417,7 @@ class ResStringPoolHeader:
                     extra,
                     self.header.start,
                 )
+                self.header_size_inflated = True
                 buff.read(extra)
             else:
                 buff.set_idx(header_end)
@@ -675,6 +682,9 @@ class AXMLParser:
         self._reset()
         self._valid = True
         self.axml_tampered = False
+        # chunk 头的 headerSize 被调大是加壳工具的痕迹（见 ADR-0015）。单独记一个
+        # 标志，供 AXMLPrinter.is_packed() 判定「已加壳」。
+        self.header_size_inflated = False
         self.buff = bytecode.BuffHandle(raw_buff)
 
         if self.buff.size() < 8:
@@ -695,7 +705,8 @@ class AXMLParser:
             self._valid = False
             return
 
-        verify_chunk_header_size(RES_XML_TYPE, axml_header.header_size)
+        if verify_chunk_header_size(RES_XML_TYPE, axml_header.header_size) > 0:
+            self.header_size_inflated = True
 
         self.filesize = axml_header.size
 
@@ -729,6 +740,9 @@ class AXMLParser:
         # 不能在这里跳。ResStringPoolHeader 自己会把读取位置对齐到
         # chunk 起点 + headerSize，详见那里的说明。
         self.sb = ResStringPoolHeader(self.buff, header, is_android_manifest)
+
+        if self.sb.header_size_inflated:
+            self.header_size_inflated = True
 
         # Stores resource ID mappings, if any
         self.m_resourceIDs = []
@@ -788,7 +802,8 @@ class AXMLParser:
 
                 # 资源 ID 的个数按 (size - headerSize) 算，起点也必须对齐到
                 # headerSize 声明的头部末尾，否则会从填充数据开始读。
-                skip_header_padding(self.buff, h)
+                if skip_header_padding(self.buff, h) > 0:
+                    self.header_size_inflated = True
 
                 for i in range((h.size - h.header_size) // 4):
                     self.m_resourceIDs.append(unpack("<L", self.buff.read(4))[0])
@@ -817,6 +832,8 @@ class AXMLParser:
                         h.type, h.header_size, h.size
                     )
                 )
+                if h.header_size > 0x10:
+                    self.header_size_inflated = True
 
             # Line Number of the source file, only used as meta information
             (self.m_lineNumber,) = unpack("<L", self.buff.read(4))
@@ -1382,9 +1399,12 @@ class AXMLPrinter:
         some broken version of a tool.
         Some file corruption might also be appear to be a packed file.
 
+        加壳痕迹的来源：decoy 属性、需要修复的名字、非法取值，以及 chunk 头的
+        ``headerSize`` 超出规范（见 ADR-0015）。
+
         :returns: True if packer detected, False otherwise
         """
-        return self.packerwarning
+        return self.packerwarning or self.axml.header_size_inflated
 
     def _get_attribute_value(self, index):
         """
