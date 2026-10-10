@@ -8,7 +8,7 @@
 
 现在每个惰性部分都有 `_ensure_<part>()` 守门（`_ensure_manifest()`、`_ensure_arsc()`、`_ensure_app_metadata()`、`_ensure_dex()`），访问器只从它取数；有依赖的 part 由 ensure 链补齐依赖（应用元数据依赖清单、资源表与子文件列表），`parse_resource()` 退化为按顺序 ensure 的糖。部分是否加载过由显式标志（`_manifest_loaded`、`_arsc_loaded`、`_app_metadata_loaded`、`self._dex is None`）记录，不用「结果是不是 `None`」判断——`None` / `''` / `[]` 都是合法的成功结果（归档没有资源表、清单里没有应用名）。
 
-已知的例外只有 ADR-0009 那三个 2.0.5 垫片（`dex_files`、`opcodes`、`strings_refx`）：它们按设计不触发解析，且已约好随 3.0 删除。除它们之外的 public 访问器都受这条约束。
+例外已归零：ADR-0009 留下的三个 2.0.5 垫片（`dex_files`、`opcodes`、`strings_refx`）原是这里唯一的例外，它们原定于 3.0 删除、实际在 4.0 随那份 ADR 一起结算（见 ADR-0009 的「补充（4.0 兑现）」）。`APK` 上现在没有任何不触发解析的 public 访问器。
 
 ## Considered Options
 
