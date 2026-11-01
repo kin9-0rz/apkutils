@@ -25,7 +25,7 @@ jobs:
       # 缺失时由 uv 自行下载，无需额外的 setup-python 步骤。
       # 注意：该 action 未发布 v8/v9/v10 浮动主标签，故固定到精确版本。
       - name: Install uv and select Python ${{ matrix.python-version }}
-        uses: astral-sh/setup-uv@v10.2.0
+        uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -53,7 +53,7 @@ jobs:
       # 固定用 3.10：下限指向的旧版本早于 Python 3.13，lxml 5.0.0 没有 cp313
       # 轮子，在 3.13 上会退化成源码编译（需要 libxml2 头文件）。
       - name: Install uv and select Python 3.10
-        uses: astral-sh/setup-uv@v10.2.0
+        uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: "3.10"
 
@@ -79,7 +79,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v10.2.0
+        uses: astral-sh/setup-uv@v10.3.3
 
       - name: Build and fail on a stale build-backend pin
         run: |
