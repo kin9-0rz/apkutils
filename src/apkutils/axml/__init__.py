@@ -2286,9 +2286,9 @@ class ARSCParser:
             # First: Get all candidates
             configs = self.resources.get_res_configs(res_id, config)
 
-            for config, ate in configs:
+            for candidate, ate in configs:
                 # deconstruct them and check if more candidates are generated
-                self.put_ate_value(result, ate, config)
+                self.put_ate_value(result, ate, candidate)
 
         def put_ate_value(self, result, ate, config):
             """
