@@ -2,6 +2,8 @@
 import os
 from xml.dom import minidom
 
+from apkutils.axml.errors import ResParserError
+
 _public_res = None
 # copy the newest sdk/platforms/android-?/data/res/values/public.xml here
 if _public_res is None:
@@ -19,7 +21,7 @@ if _public_res is None:
                     _public_res[_type] = {}
                 _public_res[_type][_name] = _id
     else:
-        raise Exception(
+        raise ResParserError(
             "need to copy the sdk/platforms/android-?/data/res/values/public.xml here")
 
 SYSTEM_RESOURCES = {

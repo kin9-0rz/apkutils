@@ -1,9 +1,10 @@
 import os
 import zipfile
 
+import pytest
 from bs4 import BeautifulSoup
 
-from apkutils.axml import ARSCParser
+from apkutils.axml import ARSCParser, ResParserError
 
 
 class TestARSC(object):
@@ -52,3 +53,8 @@ class TestARSC(object):
     def test_get_dimen_resources(self):
         res = self.arsc.get_dimen_resources(self.package)
         assert b'name="activity_horizontal_margin">16.0dip</dimen>' in res
+
+
+def test_invalid_arsc_raises_typed_error():
+    with pytest.raises(ResParserError):
+        ARSCParser(b"\x00" * 4)
