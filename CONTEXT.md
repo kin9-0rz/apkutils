@@ -24,6 +24,10 @@ _Avoid_：阶段、stage、section
 记录某一部分解析失败的值对象，含部分名、原始异常与可选文件名；收集在 `APK.errors` 中。
 _Avoid_：解析错误、error
 
+**ResParserError**：
+axml 层的类型化异常：AXML / ARSC 二进制结构无法解析，或内置资源表缺失。由 `ResourceTable` 包装成 `ResourceTableError` 后交 facade 收集。
+_Avoid_：ParseError、Exception
+
 **strict 模式**：
 失败处理模式。默认下失败被收集进 `APK.errors` 并写日志，调用不中断；`strict=True` 时失败向外抛出。
 _Avoid_：严格模式、fail-fast、raise 模式

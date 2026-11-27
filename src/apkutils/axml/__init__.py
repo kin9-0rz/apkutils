@@ -11,6 +11,7 @@ import lxml
 from lxml import etree
 
 from apkutils.axml import bytecode, public
+from apkutils.axml.errors import ResParserError
 
 log = logging.getLogger("axml")
 
@@ -339,12 +340,6 @@ DIMENSION_UNITS = ["px", "dip", "sp", "pt", "in", "mm"]
 FRACTION_UNITS = ["%", "%p"]
 
 COMPLEX_UNIT_MASK = 0x0F
-
-
-class ResParserError(Exception):
-    """Exception for the parsers"""
-
-    pass
 
 
 def complexToFloat(xcomplex):
@@ -2418,6 +2413,9 @@ class ARSCParser:
         """
         self._analyse()
 
+        # 参数错误是调用方的编程错误，不是解析失败：立即抛 ValueError，
+        # 不进 APK.errors（ADR-0002 只管解析失败）。改为 TypeError 会让现有
+        # `except ValueError` 的调用方失效，见 ADR-0018。
         if not rid:
             raise ValueError("'rid' should be set")
         if not isinstance(rid, int):
@@ -3169,8 +3167,7 @@ class ResTableMapEntry:
                 break
 
             if buff.get_idx() + 4 > buff.size():
-                log.error("Invalid ResTable_map_entry 溢出")
-                raise Exception("Invalid ResTable_map_entry 溢出")
+                raise ResParserError("Invalid ResTable_map_entry 溢出")
 
             self.items.append(
                 (unpack("<I", buff.read(4))[0], ResValue(buff, self.parent))

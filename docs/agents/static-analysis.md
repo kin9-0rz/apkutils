@@ -70,4 +70,10 @@ ruff 默认规则集含 BLE001（blind except），在本仓库报 9 处：`apk.
 
 ## 顺带说明
 
-本次审计（ruff 0.17.0，246 条）已全部分类，只改了两条真正的死代码：`examples/manifest.py` 的未使用 `import json`，以及 `axml/__init__.py` 里被删掉的 sanity check 残留 `is_string_pool = True`。另有 4 条触及 public surface（`TRY002` ×2、`TRY004`、`PLR1704`），改动成本不在代码里而在兼容承诺里，需要独立评审——已记录在 issue tracker，未在本页展开。
+本次审计（ruff 0.17.0，246 条）已全部分类，只改了两条真正的死代码：`examples/manifest.py` 的未使用 `import json`，以及 `axml/__init__.py` 里被删掉的 sanity check 残留 `is_string_pool = True`。另有 4 条触及 public surface（`TRY002` ×2、`TRY004`、`PLR1704`），改动成本不在代码里而在兼容承诺里，需要独立评审。这 4 条的结论：
+
+- `TRY002` ×2：统一改抛 `ResParserError`（类移入叶子模块 `axml/errors.py`，`apkutils.axml` 上的名字由 re-export 保活）；
+- `TRY004`：保留 `ValueError`——参数错误不是解析失败，改成 `TypeError` 是破坏性变更；
+- `PLR1704`：循环变量改名，零行为变更。
+
+详见 ADR-0018 与 issue tracker 的 #82 / #83。
