@@ -19,7 +19,8 @@ A parser for APK, Dex, AXML and ARSC.
 Usage: apkutils [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  --help  Show this message and exit.
+  --version  Show the version and exit.
+  --help     Show this message and exit.
 
 Commands:
   arsc      打印arsc
@@ -35,6 +36,8 @@ Commands:
 ```
 
 The CLI itself is Chinese-only, hence the help text above is shown verbatim.
+
+`apkutils --version` prints apkutils' own version number, which is unrelated to the APK version number printed by `info`.
 
 | Command | Purpose | Options |
 | --- | --- | --- |

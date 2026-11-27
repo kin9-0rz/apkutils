@@ -1,18 +1,21 @@
 """README 里的 `apkutils --help` 快照必须等于真实输出。
 
-这个快照曾经长期与代码脱节：README 里列着一个早已被删除的 `--version` 选项和
-一份缺少 `info` / `packages` 的命令列表，而当时没有任何东西会因此变红。这里把
-顶层 help 钉成契约——命令、选项或短帮助一改，本测试就会失败，提醒同步
-README.md 与 README.en.md。
+这个快照曾经长期与代码脱节：README 里列着一个当时**并不存在**的 `--version` 选项
+（它在 18e58b3 被删掉，直到 ADR-0017 才连同它的快照一起加回来）和一份缺少
+`info` / `packages` 的命令列表，而当时没有任何东西会因此变红。这里把顶层 help
+钉成契约——命令、选项或短帮助一改，本测试就会失败，提醒同步 README.md 与
+README.en.md。
 
 只钉顶层 help 与 `zip` 子组 help（两者都写进了 README）；其余子命令自己的 help
-不写进 README，也就没有可漂移的地方。
+不写进 README，也就没有可漂移的地方。`--version` 的**输出**不写进 README 快照：
+它每次发版都变，钉它只会让发版多两处手改，改由自洽性断言锁住。
 """
 
 import os
 import re
 import subprocess
 import sys
+from importlib.metadata import version as _dist_version
 from pathlib import Path
 
 import pytest
@@ -126,3 +129,15 @@ def test_python_dash_m_without_args_is_not_silent():
     """
     proc = _run_dash_m()
     assert "Usage:" in proc.stdout + proc.stderr
+
+
+def test_version_reports_installed_metadata():
+    """`--version` 必须报告安装元数据里的版本（见 ADR-0017）。
+
+    不断言字面量版本号：每次发版都会变 `pyproject.toml`，钉死会让发版多一处
+    手改。断言的是自洽性——flag 报的版本就是 `importlib.metadata` 读到的那一个，
+    换成源码里的字面量、或读错了来源，都会在版本漂移时变红。
+    """
+    result = CliRunner().invoke(main, ["--version"], prog_name="apkutils")
+    assert result.exit_code == 0, result.output
+    assert result.output.strip() == f"apkutils, version {_dist_version('apkutils')}"

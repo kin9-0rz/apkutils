@@ -2,6 +2,7 @@
 
 import json
 import sys
+from importlib.metadata import version as _dist_version
 
 import click
 from pygments import highlight
@@ -11,7 +12,28 @@ from pygments.lexers import get_lexer_by_name
 from apkutils import APK, _apkfile
 
 
+def _print_version(ctx, param, value):
+    """`--version` 的 callback：在这里才去读元数据。
+
+    真源是 pyproject.toml 的 [project].version，运行时经 importlib.metadata
+    读（见 ADR-0017）。刻意不在模块导入期求值——那会让「未安装的源码树」
+    连 `import apkutils.cli` 都失败，而这里失败只影响 --version 这一个动作。
+    """
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo(f"{ctx.find_root().info_name}, version {_dist_version('apkutils')}")
+    ctx.exit()
+
+
 @click.group()
+@click.option(
+    "--version",
+    is_flag=True,
+    is_eager=True,
+    expose_value=False,
+    callback=_print_version,
+    help="Show the version and exit.",
+)
 def main():
     # 控制台编码可能是 GBK 等窄编码，而清单/资源里可能含任意 Unicode
     # （例如加固应用的 app_name）；用 replace 兜底，避免打印时崩溃。

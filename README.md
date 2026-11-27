@@ -19,7 +19,8 @@
 Usage: apkutils [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  --help  Show this message and exit.
+  --version  Show the version and exit.
+  --help     Show this message and exit.
 
 Commands:
   arsc      打印arsc
@@ -33,6 +34,8 @@ Commands:
   xref      获取方法的引用方法
   zip       ZIP 容器层：解压、结构体检、对抗修复
 ```
+
+`apkutils --version` 打印 apkutils 自身的版本号，与 `info` 打印的 APK 版本号无关。
 
 | 命令       | 用途                                            | 选项                                                                                                 |
 | ---------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
